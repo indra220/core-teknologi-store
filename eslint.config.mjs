@@ -20,6 +20,20 @@ const eslintConfig = [
       "next-env.d.ts",
     ],
   },
+  
+  // >>> TAMBAHKAN OBJEK BARU DI SINI <<<
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn", // Tetap tampilkan sebagai peringatan (bisa diubah ke "error")
+        {
+          "argsIgnorePattern": "^_",
+          "varsIgnorePattern": "^_",
+          "caughtErrorsIgnorePattern": "^_"
+        }
+      ]
+    }
+  }
 ];
 
 export default eslintConfig;

@@ -2,9 +2,24 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function Header() {
-  // PERBAIKAN: Tambahkan 'await' di sini
-  const supabase = await createClient(); 
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+
+  let profileLink = "/profile"; // Default link untuk user biasa
+  let isAdmin = false;
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+    
+    if (profile?.role === 'admin') {
+      isAdmin = true;
+      profileLink = "/admin"; // Ubah link untuk admin
+    }
+  }
 
   return (
     <header className="bg-gray-900 text-white p-4 shadow-md sticky top-0 z-50">
@@ -16,7 +31,10 @@ export default async function Header() {
           {user ? (
             <>
               <span className="text-sm hidden sm:block">Halo, {user.email}</span>
-              <Link href="/profile" className="hover:text-gray-300">Profil</Link>
+              {/* PERBAIKAN: Gunakan link dinamis */}
+              <Link href={profileLink} className="hover:text-gray-300">
+                {isAdmin ? 'Dashboard' : 'Profil'}
+              </Link>
               <form action="/auth/signout" method="post">
                 <button type="submit" className="bg-red-600 px-3 py-1 rounded hover:bg-red-700 text-sm">
                   Logout

@@ -1,12 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from 'next/link';
 import Image from 'next/image';
-import { Laptop } from "@/types"; // Impor ini sekarang akan berhasil
+import { Laptop } from "@/types";
 
 export const revalidate = 0;
 
 export default async function HomePage() {
   const supabase = await createClient();
+  
+  // HAPUS SEMUA KODE 'if (user) { ... }' DARI SINI
+  // Halaman ini sekarang hanya untuk menampilkan produk
+  
   const { data: laptops } = await supabase.from('laptops').select('*').order('created_at', { ascending: false });
 
   return (
