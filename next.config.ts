@@ -1,7 +1,14 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  /* config options here */
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        // Ganti 'abcdefg.supabase.co' dengan URL Supabase Anda
+        hostname: 'https://jcioxsycybxloxtxejqy.supabase.co', 
+      },
+    ],
+  },
 };
 
 export default nextConfig;

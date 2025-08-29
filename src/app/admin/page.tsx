@@ -4,98 +4,112 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import Image from 'next/image';
 
+export const revalidate = 0;
+
+// Komponen Ikon
+const UsersIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.122-1.28-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.653.122-1.28.356-1.857m0 0a5.002 5.002 0 019.288 0M12 14a5 5 0 100-10 5 5 0 000 10z" /></svg>
+);
+const BoxIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4M4 7l8 4.5 8-4.5M12 11.5V15" /></svg>
+);
+
 export default async function AdminDashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect('/login');
-  }
+  if (!user) { redirect('/login'); }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  if (profile?.role !== 'admin') { redirect('/'); }
 
-  if (profile?.role !== 'admin') {
-    redirect('/dashboard');
-  }
-
-  // PERBAIKAN: Hapus deklarasi 'laptopsError'
-  const { data: laptops } = await supabase.from('laptops').select('*');
-  
-  // PERBAIKAN: Hapus deklarasi 'usersError'
+  const { data: laptops } = await supabase.from('laptops').select('*').order('created_at', { ascending: false });
   const { count: userCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
 
   return (
-    <div className="max-w-7xl mx-auto py-10">
-      <header className="mb-8">
-        <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">Admin Dashboard</h1>
-        <p className="mt-2 text-lg text-gray-600">Selamat datang, Admin! Kelola semua data dari sini.</p>
+    <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+      <header className="mb-10">
+        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight sm:text-4xl">Admin Dashboard</h1>
+        <p className="mt-2 text-lg text-gray-600">Selamat datang, Admin! Kelola inventaris dan pengguna Anda.</p>
       </header>
 
-      {/* Bagian Ringkasan */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-500">Total Produk</h3>
-          <p className="text-4xl font-bold text-gray-900 mt-2">{laptops?.length || 0}</p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-500">Total Pengguna</h3>
-          <p className="text-4xl font-bold text-gray-900 mt-2">{userCount || 0}</p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-500">Pendapatan (Contoh)</h3>
-          <p className="text-4xl font-bold text-gray-900 mt-2">Rp 0</p>
-        </div>
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+        {/* PERBAIKAN: Bungkus kartu Total Produk dengan Link */}
+        <Link href="/admin/report" className="block">
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-100 p-6 rounded-2xl shadow-lg border flex items-center space-x-4 h-full transition-transform transform hover:-translate-y-1 hover:shadow-xl">
+            <div className="bg-white p-3 rounded-full shadow-sm"><BoxIcon /></div>
+            <div>
+              <h3 className="text-base font-semibold text-gray-500">Total Produk</h3>
+              <p className="text-4xl font-extrabold text-gray-900">{laptops?.length || 0}</p>
+            </div>
+          </div>
+        </Link>
+        
+        <Link href="/admin/users" className="block">
+          <div className="bg-gradient-to-br from-indigo-50 to-purple-100 p-6 rounded-2xl shadow-lg border flex items-center space-x-4 h-full transition-transform transform hover:-translate-y-1 hover:shadow-xl">
+            <div className="bg-white p-3 rounded-full shadow-sm"><UsersIcon /></div>
+            <div>
+              <h3 className="text-base font-semibold text-gray-500">Total Pengguna</h3>
+              <p className="text-4xl font-extrabold text-gray-900">{userCount || 0}</p>
+            </div>
+          </div>
+        </Link>
       </section>
-
-      {/* Bagian Manajemen Produk */}
-      <section className="bg-white p-8 rounded-2xl shadow-lg border border-gray-200">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">Manajemen Produk</h2>
-          <Link href="/admin/products/add" className="bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200">
-            + Tambah Produk
-          </Link>
+      
+      <section className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800">Manajemen Produk</h2>
+            <p className="text-sm text-gray-500 mt-1">Tambah, edit, atau hapus produk di toko Anda.</p>
+          </div>
+          {/* PERBAIKAN: Hapus semua tombol dari sini */}
         </div>
         
-        {/* Tabel Produk */}
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produk</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {laptops?.map((laptop: Laptop) => (
-                <tr key={laptop.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10">
-                        <Image src={laptop.image_url || '/placeholder.png'} alt={laptop.name} width={40} height={40} className="rounded-md object-cover"/>
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{laptop.name}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{laptop.brand}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
-                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(laptop.price)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <a href="#" className="text-indigo-600 hover:text-indigo-900">Edit</a>
-                    <a href="#" className="text-red-600 hover:text-red-900 ml-4">Hapus</a>
-                  </td>
+          {laptops && laptops.length > 0 ? (
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produk</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {laptops.map((laptop: Laptop) => (
+                  <tr key={laptop.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-12 w-12 relative">
+                          <Image src={laptop.image_url || '/placeholder.png'} alt={laptop.name} fill className="rounded-lg object-cover" sizes="48px" />
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{laptop.name}</div>
+                          <div className="text-xs text-gray-500">{laptop.processor} / {laptop.ram} / {laptop.storage}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{laptop.brand}</td>
+                    <td className="px-6 py-4 whitespace-n owrap text-sm text-gray-900 font-semibold">
+                      {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(laptop.price)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                      <Link href={`/admin/products/edit/${laptop.id}`} className="text-indigo-600 hover:text-indigo-900 mr-4">Edit</Link>
+                      <button type="button" className="text-red-600 hover:text-red-900">Hapus</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="text-center py-10 text-gray-500">
+              <p className="mb-4">Belum ada produk yang ditambahkan.</p>
+              <Link href="/admin/products/add" className="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700">
+                Tambahkan Produk Pertama Anda
+              </Link>
+            </div>
+          )}
         </div>
       </section>
     </div>

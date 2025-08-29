@@ -1,16 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from 'next/link';
-import Image from 'next/image';
+import Image from 'next/image'; // 1. Impor komponen Image
 import { Laptop } from "@/types";
 
-export const revalidate = 0;
+// 2. Atur caching data selama 1 jam (3600 detik)
+export const revalidate = 3600;
 
 export default async function HomePage() {
   const supabase = await createClient();
-  
-  // HAPUS SEMUA KODE 'if (user) { ... }' DARI SINI
-  // Halaman ini sekarang hanya untuk menampilkan produk
-  
   const { data: laptops } = await supabase.from('laptops').select('*').order('created_at', { ascending: false });
 
   return (
@@ -22,13 +19,14 @@ export default async function HomePage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
         {laptops?.map((laptop: Laptop) => (
           <div key={laptop.id} className="bg-white rounded-lg shadow-lg overflow-hidden transition-transform transform hover:-translate-y-2 duration-300 flex flex-col">
-            <Link href={`/laptop/${laptop.id}`} className="block">
+            {/* 3. Perbarui bagian gambar */}
+            <Link href={`/laptop/${laptop.id}`} className="block relative aspect-video">
               <Image
                 src={laptop.image_url || '/placeholder.png'}
                 alt={laptop.name}
-                width={500}
-                height={300}
-                className="w-full h-48 object-cover"
+                fill
+                className="object-cover"
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
               />
             </Link>
             <div className="p-5 flex flex-col flex-grow">
