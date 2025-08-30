@@ -4,7 +4,6 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 export default function NotFoundContent() {
-  // Penggunaan 'useSearchParams' sekarang aman di dalam Client Component ini
   const _searchParams = useSearchParams();
 
   return (
