@@ -1,11 +1,12 @@
 'use client';
 
 import { Profile } from "@/types";
-import { useActionState } from "react";      // 'useActionState' diimpor dari 'react'
-import { useFormStatus } from "react-dom";    // 'useFormStatus' diimpor dari 'react-dom'
+import { useActionState } from "react";      // Diimpor dari 'react'
+import { useFormStatus } from "react-dom";    // Diimpor dari 'react-dom'
 import { updateUserByAdmin, deleteUserByAdmin } from "./actions";
 import Link from "next/link";
 import { useState } from "react";
+import { motion } from 'framer-motion';
 
 function SubmitButton({ isDisabled }: { isDisabled: boolean }) {
   const { pending } = useFormStatus();
@@ -21,9 +22,16 @@ function DeleteButton({ isDisabled }: { isDisabled: boolean }) {
   const { pending } = useFormStatus();
   const disabled = pending || isDisabled;
   return (
-    <button type="submit" disabled={disabled} className={`w-full sm:w-auto font-semibold px-5 py-2 rounded-lg transition duration-200 shadow-md ${disabled ? 'bg-red-300 text-white cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700'}`}>
+    <motion.button 
+      type="submit" 
+      disabled={disabled} 
+      className={`w-full sm:w-auto font-semibold px-5 py-2 rounded-lg transition duration-200 shadow-md ${disabled ? 'bg-red-300 text-white cursor-not-allowed' : 'bg-red-600 text-white'}`}
+      whileHover={!disabled ? { scale: 1.05, rotate: [0, -1.5, 1.5, -1.5, 0] } : {}}
+      transition={{ duration: 0.3 }}
+      whileTap={!disabled ? { scale: 0.95 } : {}}
+    >
       {pending ? 'Menghapus...' : 'Hapus Pengguna Ini'}
-    </button>
+    </motion.button>
   );
 }
 
@@ -34,8 +42,14 @@ export default function EditUserForm({ user }: { user: Profile }) {
   
   const [adminPassword, setAdminPassword] = useState('');
   const isPasswordEmpty = adminPassword.trim() === '';
-
   const isEditingAdmin = user.role === 'admin';
+
+  // Fungsi untuk konfirmasi sebelum form hapus di-submit
+  const handleConfirmDelete = (event: React.FormEvent<HTMLFormElement>) => {
+    if (!window.confirm(`Anda yakin ingin menghapus pengguna ${user.username}? Aksi ini tidak bisa dibatalkan.`)) {
+      event.preventDefault(); // Batalkan submit form jika pengguna klik 'Cancel'
+    }
+  };
 
   return (
     <>
@@ -86,7 +100,7 @@ export default function EditUserForm({ user }: { user: Profile }) {
         <div className="mt-10 p-8 bg-red-50 border border-red-200 rounded-2xl">
           <h3 className="text-xl font-bold text-red-800">Zona Berbahaya</h3>
           <p className="mt-2 text-sm text-red-700">Menghapus pengguna adalah aksi permanen dan tidak dapat dibatalkan.</p>
-          <form action={deleteAction} className="mt-6">
+          <form action={deleteAction} onSubmit={handleConfirmDelete} className="mt-6">
             <input type="hidden" name="userId" value={user.id} />
             <input type="hidden" name="adminPassword" value={adminPassword} />
             <DeleteButton isDisabled={isPasswordEmpty} />

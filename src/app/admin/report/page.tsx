@@ -11,12 +11,8 @@ ChartJS.register(
 );
 
 // Komponen Ikon
-const MoneyIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01M12 6v-1.344a4.014 4.014 0 01.901-2.543 4.014 4.014 0 012.543-.901M12 6H9.01M12 6H7.5a4.5 4.5 0 00-4.5 4.5v.01M12 18v1.344a4.014 4.014 0 00-.901 2.543 4.014 4.014 0 00-2.543.901M12 18h2.99M12 18h4.5a4.5 4.5 0 004.5-4.5v-.01" /></svg>
-);
-const BoxIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4M4 7l8 4.5 8-4.5M12 11.5V15" /></svg>
-);
+const MoneyIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01M12 6v-1.344a4.014 4.014 0 01.901-2.543 4.014 4.014 0 012.543-.901M12 6H9.01M12 6H7.5a4.5 4.5 0 00-4.5 4.5v.01M12 18v1.344a4.014 4.014 0 00-.901 2.543 4.014 4.014 0 00-2.543.901M12 18h2.99M12 18h4.5a4.5 4.5 0 004.5-4.5v-.01" /></svg> );
+const BoxIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4M4 7l8 4.5 8-4.5M12 11.5V15" /></svg> );
 
 interface StatsData {
   laptops: { brand: string }[];
@@ -100,7 +96,10 @@ export default function AdminReportPage() {
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight sm:text-4xl">Laporan & Statistik</h1>
           <p className="mt-2 text-lg text-gray-600">Ringkasan data Core Teknologi Store.</p>
         </div>
-        <Link href="/admin" className="mt-4 sm:mt-0 bg-gray-800 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-900 transition">
+        <Link 
+          href="/admin" 
+          className="mt-4 sm:mt-0 bg-gray-800 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-900 transition"
+        >
           &larr; Kembali ke Dashboard
         </Link>
       </header>
@@ -114,7 +113,7 @@ export default function AdminReportPage() {
           </div>
         </div>
         <div className="bg-gradient-to-br from-green-50 to-teal-100 p-6 rounded-2xl shadow-lg border flex items-center space-x-4">
-          <div className="bg-white p-3 rounded-full shadow-sm"><MoneyIcon /></div>
+           <div className="bg-white p-3 rounded-full shadow-sm"><MoneyIcon /></div>
           <div>
             <h3 className="text-base font-semibold text-gray-500">Pendapatan (Contoh)</h3>
             <p className="text-4xl font-extrabold text-green-600">Rp 0</p>

@@ -1,20 +1,18 @@
-'use client'; // Pindahkan 'use client' ke komponen yang lebih spesifik
+'use client';
 
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useNotification } from '@/components/notifications/NotificationProvider';
 
-// 1. Buat komponen baru yang berisi semua logika form
 function LoginForm() {
-  // Komponen ini secara eksplisit adalah Client Component
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { showNotification } = useNotification();
-  const searchParams = useSearchParams(); // Hook ini sekarang aman digunakan di sini
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const logoutMessage = searchParams.get('message');
@@ -42,8 +40,8 @@ function LoginForm() {
       setError(data.error || 'Terjadi kesalahan');
     } else {
       showNotification('Login berhasil! Selamat datang kembali.', 'success');
-      router.push('/');
-      router.refresh();
+      // PERBAIKAN: Gunakan reload halaman penuh untuk memastikan sesi terbaca
+      window.location.href = '/';
     }
   };
   
@@ -60,7 +58,12 @@ function LoginForm() {
         <div>
           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">Username</label>
           <input
-            id="username" type="text" value={username} onChange={(e) => setUsername(e.target.value)} required disabled={loading}
+            id="username"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            disabled={loading}
             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             placeholder="Masukkan username Anda"
           />
@@ -68,13 +71,19 @@ function LoginForm() {
         <div>
           <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">Password</label>
           <input
-            id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={loading}
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            disabled={loading}
             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blue-500"
             placeholder="Masukkan password Anda"
           />
         </div>
         <button
-          type="submit" disabled={loading}
+          type="submit"
+          disabled={loading}
           className={`w-full py-3 px-4 rounded-lg font-semibold text-white tracking-wide transition duration-200 ease-in-out transform hover:-translate-y-0.5 shadow-md ${loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'}`}
         >
           {loading ? 'Memuat...' : 'Login'}
@@ -90,7 +99,6 @@ function LoginForm() {
   );
 }
 
-// 2. Export default komponen utama yang membungkus LoginForm dengan Suspense
 export default function LoginPage() {
   return (
     <div className="flex justify-center items-center min-h-[calc(100vh-64px)] py-12 px-4 sm:px-6 lg:px-8">

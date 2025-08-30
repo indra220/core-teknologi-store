@@ -16,51 +16,49 @@ export default function Header() {
   const { showNotification } = useNotification();
 
   useEffect(() => {
+    const supabase = createClient();
+    
     const fetchUser = async () => {
-      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
 
       if (user) {
-        // Ambil data dari tabel profiles
         const { data: profile } = await supabase
           .from('profiles')
           .select('full_name, role')
           .eq('id', user.id)
           .single();
         
-        // Tentukan nama yang akan ditampilkan
         setDisplayName(profile?.full_name || user.email || '');
-        
-        if (profile?.role === 'admin') {
-          setIsAdmin(true);
-        } else {
-          setIsAdmin(false);
-        }
+        setIsAdmin(profile?.role === 'admin');
+      } else {
+        setDisplayName(null);
+        setIsAdmin(false);
       }
       setLoading(false);
     };
     
     fetchUser();
 
-    // Listener untuk memastikan data terupdate saat login/logout dari tab lain
-    const { data: { subscription } } = createClient().auth.onAuthStateChange((_event, session) => {
-        setUser(session?.user ?? null);
-        fetchUser(); // Panggil ulang untuk sinkronisasi
+    // Listener ini sekarang hanya untuk sinkronisasi antar tab atau setelah verifikasi email
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      fetchUser();
+      if (event === "SIGNED_OUT") {
+        router.push('/login');
+      }
     });
 
     return () => {
         subscription.unsubscribe();
     };
 
-  }, []);
+  }, [router]);
 
   const handleLogout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
     showNotification('Logout berhasil!', 'info');
-    router.push('/login');
-    router.refresh();
   };
 
   const profileLink = isAdmin ? "/admin" : "/profile";
@@ -71,7 +69,6 @@ export default function Header() {
         <Link href="/" className="text-2xl font-bold hover:text-gray-300">Core Teknologi Store</Link>
         <div className="flex items-center space-x-4">
           {loading ? (
-            // Tampilan loading skeleton
             <div className="h-6 w-48 bg-gray-700 rounded animate-pulse"></div>
           ) : user ? (
             <>
