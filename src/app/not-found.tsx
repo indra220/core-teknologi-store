@@ -3,9 +3,10 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 // Komponen internal yang menjadi Client Component
+// karena menggunakan useSearchParams
 function NotFoundContent() {
   'use client';
-  // PERBAIKAN: Tambahkan underscore karena variabel tidak dipakai
+  // Hook ini sekarang aman digunakan di sini
   const _searchParams = useSearchParams();
 
   return (
@@ -23,10 +24,11 @@ function NotFoundContent() {
 }
 
 
-// Komponen utama yang diekspor
+// Komponen utama yang diekspor (tetap sebagai Server Component)
 export default function NotFound() {
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-64px)] bg-gray-50">
+      {/* Bungkus komponen klien dengan Suspense */}
       <Suspense fallback={<div className="text-center text-lg">Memuat...</div>}>
         <NotFoundContent />
       </Suspense>
