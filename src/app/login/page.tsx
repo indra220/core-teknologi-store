@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 // Hapus useRouter dari impor
 import Link from 'next/link';
 import { useNotification } from '@/components/notifications/NotificationProvider';
@@ -12,6 +12,23 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   // Hapus deklarasi router
   const { showNotification } = useNotification();
+
+  useEffect(() => {
+    const getCookie = (name: string): string | null => {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+      return null;
+    };
+
+    const logoutMessage = getCookie('logout_message');
+    
+    if (logoutMessage) {
+      showNotification(decodeURIComponent(logoutMessage), 'info');
+      document.cookie = "logout_message=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    }
+  }, [showNotification]);
+
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +48,7 @@ export default function LoginPage() {
       setError(data.error || 'Terjadi kesalahan');
     } else {
       showNotification('Login berhasil! Selamat datang kembali.', 'success');
-      window.location.href = '/'; // Paksa reload penuh
+      window.location.href = '/';
     }
   };
   
