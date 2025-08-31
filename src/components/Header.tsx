@@ -40,7 +40,6 @@ export default function Header() {
     
     fetchUser();
 
-    // Listener ini sekarang hanya untuk sinkronisasi antar tab atau setelah verifikasi email
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       fetchUser();
@@ -52,7 +51,6 @@ export default function Header() {
     return () => {
         subscription.unsubscribe();
     };
-
   }, [router]);
 
   const handleLogout = async () => {

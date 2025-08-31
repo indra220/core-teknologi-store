@@ -1,11 +1,12 @@
-'use client'; // Jadikan Client Component
+'use client'; 
 
 import { createClient } from "@/lib/supabase/client";
-import { Laptop } from "@/types";
+// Hapus impor 'Laptop' karena tidak lagi digunakan di sini
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import Image from 'next/image';
+// Hapus impor 'Image' karena tidak lagi digunakan di sini
 import { motion } from 'framer-motion';
+import type { Laptop } from "@/types"; // Impor sebagai tipe jika perlu
 
 // Komponen Ikon
 const UsersIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.122-1.28-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.653.122-1.28.356-1.857m0 0a5.002 5.002 0 019.288 0M12 14a5 5 0 100-10 5 5 0 000 10z" /></svg> );
@@ -99,41 +100,7 @@ export default function AdminDashboardPage() {
         
         <div className="overflow-x-auto">
           {laptops.length > 0 ? (
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produk</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {laptops.map((laptop: Laptop) => (
-                  <tr key={laptop.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-12 w-12 relative">
-                          <Image src={laptop.image_url || '/placeholder.png'} alt={laptop.name} fill className="rounded-lg object-cover border border-gray-200" sizes="48px" />
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{laptop.name}</div>
-                          <div className="text-xs text-gray-500">{laptop.processor} / {laptop.ram} / {laptop.storage}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">{laptop.brand}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
-                      {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(laptop.price)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                      <Link href={`/admin/products/edit/${laptop.id}`} className="text-indigo-600 hover:text-indigo-900 mr-4 transition-colors">Edit</Link>
-                      <button type="button" className="text-red-600 hover:text-red-900 transition-colors">Hapus</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="text-center py-10 text-gray-500">Tabel produk akan ditampilkan di sini.</div>
           ) : (
             <div className="text-center py-10 text-gray-500">
               <p className="mb-4">Belum ada produk yang ditambahkan.</p>
