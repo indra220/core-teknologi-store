@@ -1,78 +1,51 @@
-'use client';
-
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
-import { useNotification } from '@/components/notifications/NotificationProvider';
-import { useEffect, useState } from 'react';
-import type { User } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
 
-export default function Header() {
-  const [user, setUser] = useState<User | null>(null);
-  const [displayName, setDisplayName] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
-  const { showNotification } = useNotification();
+// Fungsi Logout sebagai Server Action (lebih sederhana)
+async function handleLogout() {
+  'use server';
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  // Langsung redirect ke halaman login tanpa pesan
+  return redirect('/login');
+}
 
-  useEffect(() => {
-    const supabase = createClient();
+export default async function Header() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let profileLink = "/profile";
+  let linkText = "Profil";
+  let displayName = "";
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name, role')
+      .eq('id', user.id)
+      .single();
     
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('full_name, role')
-          .eq('id', user.id)
-          .single();
-        
-        setDisplayName(profile?.full_name || user.email || '');
-        setIsAdmin(profile?.role === 'admin');
-      } else {
-        setDisplayName(null);
-        setIsAdmin(false);
-      }
-      setLoading(false);
-    };
+    displayName = profile?.full_name || user.email || '';
     
-    fetchUser();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      fetchUser();
-      if (event === "SIGNED_OUT") {
-        router.push('/login');
-      }
-    });
-
-    return () => {
-        subscription.unsubscribe();
-    };
-  }, [router]);
-
-  const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    showNotification('Logout berhasil!', 'info');
-  };
-
-  const profileLink = isAdmin ? "/admin" : "/profile";
+    if (profile?.role === 'admin') {
+      profileLink = "/admin";
+      linkText = "Dashboard";
+    }
+  }
 
   return (
     <header className="bg-gray-900 text-white p-4 shadow-md sticky top-0 z-50">
       <nav className="container mx-auto flex justify-between items-center">
         <Link href="/" className="text-2xl font-bold hover:text-gray-300">Core Teknologi Store</Link>
         <div className="flex items-center space-x-4">
-          {loading ? (
-            <div className="h-6 w-48 bg-gray-700 rounded animate-pulse"></div>
-          ) : user ? (
+          {user ? (
             <>
               <span className="text-sm hidden sm:block">Halo, {displayName}</span>
-              <Link href={profileLink} className="hover:text-gray-300">{isAdmin ? 'Dashboard' : 'Profil'}</Link>
-              <button onClick={handleLogout} className="bg-red-600 px-3 py-1 rounded hover:bg-red-700 text-sm">Logout</button>
+              <Link href={profileLink} className="hover:text-gray-300">{linkText}</Link>
+              <form action={handleLogout}>
+                <button type="submit" className="bg-red-600 px-3 py-1 rounded hover:bg-red-700 text-sm">Logout</button>
+              </form>
             </>
           ) : (
             <>
