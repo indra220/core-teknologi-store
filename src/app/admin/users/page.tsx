@@ -1,10 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-// PERBAIKAN: Hapus impor 'Profile' dari sini karena tidak digunakan
-import UserList from "./UserList";
+import UserList from "./UserList"; // Impor komponen Client
 
-export const revalidate = 0;
+export const revalidate = 0; // Selalu ambil data terbaru
 
 export default async function ManageUsersPage() {
   const supabase = await createClient();
@@ -15,6 +14,7 @@ export default async function ManageUsersPage() {
   const { data: adminProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
   if (adminProfile?.role !== 'admin') { redirect('/'); }
 
+  // Ambil semua data profil di server
   const { data: profiles, error } = await supabase.from('profiles').select('*').order('full_name');
 
   if (error) {
@@ -36,6 +36,7 @@ export default async function ManageUsersPage() {
         </Link>
       </header>
       
+      {/* Tampilkan komponen client dan kirim data profiles sebagai prop */}
       <UserList profiles={profiles || []} />
     </div>
   );
