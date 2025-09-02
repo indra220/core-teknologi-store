@@ -5,7 +5,7 @@ const nextConfig = {
       {
         protocol: 'https',
         // Ganti 'abcdefg.supabase.co' dengan URL Supabase Anda
-        hostname: 'https://jcioxsycybxloxtxejqy.supabase.co', 
+        hostname: 'jcioxsycybxloxtxejqy.supabase.co', 
       },
     ],
   },
