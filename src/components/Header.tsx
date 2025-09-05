@@ -17,8 +17,8 @@ export default function Header() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const router = useRouter();
   const { showNotification } = useNotification();
-  // PERBAIKAN: Ambil 'loading' dari useCart dan ganti namanya menjadi 'cartLoading'
-  const { cartCount, clearCart, loading: cartLoading } = useCart();
+  // PERBAIKAN: Hapus 'cartLoading' yang tidak terpakai
+  const { cartCount, clearCart } = useCart();
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   useEffect(() => {
@@ -77,6 +77,12 @@ export default function Header() {
             <div className="h-6 w-48 bg-gray-700 rounded animate-pulse"></div>
           ) : user ? (
             <>
+              <button onClick={() => setIsCartOpen(true)} className="relative p-2 hover:bg-gray-700 rounded-full">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                {cartCount > 0 && (
+                  <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{cartCount}</span>
+                )}
+              </button>
               <div className="relative">
                 <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="text-sm hidden sm:block hover:text-gray-300">
                   Halo, {displayName}
@@ -91,21 +97,12 @@ export default function Header() {
             </>
           ) : (
             <>
+              <button onClick={() => setIsCartOpen(true)} className="relative p-2">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+              </button>
               <Link href="/login" className="hover:text-gray-300">Login</Link>
               <Link href="/register" className="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 text-sm">Register</Link>
             </>
-          )}
-          
-          {/* PERBAIKAN: Gunakan 'cartLoading' untuk menampilkan placeholder */}
-          {cartLoading ? (
-            <div className="h-8 w-8 bg-gray-700 rounded-full animate-pulse"></div>
-          ) : (
-            <button onClick={() => setIsCartOpen(true)} className="relative p-2">
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-              {cartCount > 0 && (
-                <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{cartCount}</span>
-              )}
-            </button>
           )}
         </div>
       </nav>

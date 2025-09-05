@@ -6,16 +6,13 @@ import { Laptop } from '@/types';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 
-export interface CartItem extends Laptop {
-  quantity: number;
-}
-
+export interface CartItem extends Laptop { quantity: number; }
 interface CartContextType {
   cartItems: CartItem[];
   addToCart: (product: Laptop, quantity: number) => Promise<void>;
   removeFromCart: (productId: string) => Promise<void>;
   updateQuantity: (productId: string, quantity: number) => Promise<void>;
-  clearCart: () => Promise<void>; // Tipe diperbarui menjadi async
+  clearCart: () => void;
   cartCount: number;
   loading: boolean;
 }
@@ -46,11 +43,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       console.error("Error fetching cart:", error);
       setCartItems([]);
     } else if (cartData) {
-      // Logika ini sudah benar untuk memformat data dan menghindari error konversi tipe
       const formattedCart = cartData
         .filter(item => item.laptops)
         .map(item => ({
-          ...(item.laptops as Laptop),
+          // PERBAIKAN: Gunakan 'as unknown as Laptop' untuk konversi tipe
+          ...(item.laptops as unknown as Laptop),
           quantity: item.quantity,
         }));
       setCartItems(formattedCart);
@@ -107,25 +104,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
   
-  // ## FUNGSI YANG DIPERBAIKI ##
-  const clearCart = async () => {
-    if (!user) return;
-
-    setLoading(true);
-    const { error } = await supabase
-      .from('cart_items')
-      .delete()
-      .eq('user_id', user.id);
-
-    if (!error) {
-      setCartItems([]); // Bersihkan state lokal HANYA jika di database berhasil
-      showNotification('Keranjang berhasil dikosongkan.', 'info');
-    } else {
-      console.error("Gagal membersihkan keranjang:", error);
-      showNotification('Gagal membersihkan keranjang.', 'error');
-    }
-    setLoading(false);
-  };
+  const clearCart = () => setCartItems([]);
   
   const cartCount = cartItems.reduce((count, item) => count + item.quantity, 0);
 
