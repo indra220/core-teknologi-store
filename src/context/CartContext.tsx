@@ -36,9 +36,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const fetchCartItems = useCallback(async (userId: string) => {
     setLoading(true);
+
+    // --- PERBAIKAN UTAMA DI SINI ---
+    // Query diubah untuk hanya memilih kolom yang diperlukan dari tabel laptops.
     const { data: cartData, error } = await supabase
       .from('cart_items')
-      .select('quantity, laptops (*)')
+      .select(`
+        quantity, 
+        laptops (
+          id, 
+          name, 
+          brand,
+          price, 
+          image_url,
+          processor,
+          ram,
+          storage,
+          screen_size,
+          description,
+          created_at
+        )
+      `)
       .eq('user_id', userId);
 
     if (error) {
@@ -85,18 +103,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
       newCartItems = [...cartItems, { ...product, quantity: newQuantity }];
     }
     
-    // 1. Langsung update UI (Optimistic Update)
     setCartItems(newCartItems);
     showNotification(`${quantity} "${product.name}" ditambahkan!`, 'success');
 
-    // 2. Lakukan permintaan ke database
     const { error } = await supabase.from('cart_items').upsert({
       user_id: user.id,
       product_id: product.id,
       quantity: newQuantity
     }, { onConflict: 'user_id, product_id' });
 
-    // 3. Jika gagal, kembalikan state UI dan tampilkan error
     if (error) {
       showNotification("Gagal menambahkan produk.", "error");
       setCartItems(previousCart);
@@ -109,7 +124,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const previousCart = [...cartItems];
     const newCartItems = cartItems.filter(item => item.id !== productId);
 
-    // Optimistic Update
     setCartItems(newCartItems);
     showNotification('Produk dihapus dari keranjang.', 'info');
 
@@ -131,7 +145,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const previousCart = [...cartItems];
     const newCartItems = cartItems.map(item => item.id === productId ? { ...item, quantity: quantity } : item);
 
-    // Optimistic Update
     setCartItems(newCartItems);
     
     const { error } = await supabase.from('cart_items').update({ quantity }).match({ user_id: user.id, product_id: productId });
