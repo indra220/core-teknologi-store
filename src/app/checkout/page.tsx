@@ -1,22 +1,17 @@
+// src/app/checkout/page.tsx
 'use client';
 
 import { useCart } from "@/context/CartContext";
 import Image from "next/image";
 import Link from "next/link";
-import { useNotification } from "@/components/notifications/NotificationProvider";
-import { CartItem } from "@/context/CartContext"; // Impor CartItem untuk typing
+import { CartItem } from "@/context/CartContext";
+// 1. Impor komponen PayPalPayment
+import PayPalPayment from "@/components/PayPalButtons";
 
 export default function CheckoutPage() {
   const { cartItems, cartCount, updateQuantity, removeFromCart } = useCart();
-  const { showNotification } = useNotification();
 
   const subtotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
-
-  const handleCheckout = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Di aplikasi nyata, di sini Anda akan memproses pembayaran (misalnya dengan Stripe)
-    showNotification("Fitur pembayaran belum diimplementasikan.", "info");
-  };
 
   if (cartCount === 0) {
     return (
@@ -42,7 +37,7 @@ export default function CheckoutPage() {
         <div className="lg:col-span-2 bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Produk Pesanan ({cartCount})</h2>
           <ul className="divide-y divide-gray-200">
-            {cartItems.map((item: CartItem) => ( // Pastikan item memiliki tipe CartItem
+            {cartItems.map((item: CartItem) => (
               <li key={item.id} className="flex items-center py-6">
                 <Image src={item.image_url || '/placeholder.png'} alt={item.name} width={96} height={96} className="h-24 w-24 rounded-lg object-cover border"/>
                 <div className="ml-4 flex-grow">
@@ -52,7 +47,6 @@ export default function CheckoutPage() {
                 </div>
                 <div className="flex items-center border border-gray-300 rounded-lg">
                   <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="px-3 py-1 font-bold text-gray-700 hover:bg-gray-100 rounded-l-lg">-</button>
-                  {/* PERUBAHAN DI SINI: tambahkan text-gray-900 */}
                   <span className="px-4 text-sm font-semibold text-gray-900">{item.quantity}</span>
                   <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="px-3 py-1 font-bold text-gray-700 hover:bg-gray-100 rounded-r-lg">+</button>
                 </div>
@@ -79,11 +73,10 @@ export default function CheckoutPage() {
                 <span>{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(subtotal)}</span>
               </div>
             </div>
-            <form onSubmit={handleCheckout} className="mt-8">
-              <button type="submit" className="w-full py-3 px-4 rounded-lg font-semibold text-white bg-green-600 hover:bg-green-700 transition">
-                Lanjut ke Pembayaran
-              </button>
-            </form>
+            {/* 2. Ganti <form> dengan komponen PayPalPayment */}
+            <div className="mt-8">
+              <PayPalPayment />
+            </div>
           </div>
         </div>
       </div>

@@ -17,7 +17,6 @@ export default function Header() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const router = useRouter();
   const { showNotification } = useNotification();
-  // PERBAIKAN: Hapus 'cartLoading' yang tidak terpakai
   const { cartCount, clearCart } = useCart();
   const [isCartOpen, setIsCartOpen] = useState(false);
 
@@ -60,7 +59,7 @@ export default function Header() {
   const handleLogout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    clearCart();
+    clearCart(); // Memanggil clearCart dari context
     showNotification('Logout berhasil!', 'info');
     router.push('/login');
     router.refresh();
@@ -90,6 +89,11 @@ export default function Header() {
                 {isDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
                     <Link href={profileLink} onClick={() => setIsDropdownOpen(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{isAdmin ? 'Dashboard' : 'Profil Saya'}</Link>
+                    
+                    {!isAdmin && (
+                       <Link href="/orders" onClick={() => setIsDropdownOpen(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Pesanan Saya</Link>
+                    )}
+
                     <a href="#" onClick={handleLogout} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Logout</a>
                   </div>
                 )}

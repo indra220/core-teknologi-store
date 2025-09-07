@@ -1,3 +1,5 @@
+// src/context/CartContext.tsx
+
 'use client';
 
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
@@ -12,7 +14,8 @@ interface CartContextType {
   addToCart: (product: Laptop, quantity: number) => Promise<void>;
   removeFromCart: (productId: string) => Promise<void>;
   updateQuantity: (productId: string, quantity: number) => Promise<void>;
-  clearCart: () => void;
+  // PERBAIKAN: Ubah tipe clearCart menjadi Promise<void>
+  clearCart: () => Promise<void>;
   cartCount: number;
   loading: boolean;
 }
@@ -46,7 +49,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const formattedCart = cartData
         .filter(item => item.laptops)
         .map(item => ({
-          // PERBAIKAN: Gunakan 'as unknown as Laptop' untuk konversi tipe
           ...(item.laptops as unknown as Laptop),
           quantity: item.quantity,
         }));
@@ -104,7 +106,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
   
-  const clearCart = () => setCartItems([]);
+  // FUNGSI YANG DISEMPURNAKAN
+  const clearCart = async () => {
+    if (!user) {
+      setCartItems([]);
+      return;
+    }
+    // Hapus semua item dari database untuk user yang sedang login
+    const { error } = await supabase.from('cart_items').delete().eq('user_id', user.id);
+    if (!error) {
+      // Jika berhasil, kosongkan state lokal
+      setCartItems([]);
+    } else {
+      console.error("Gagal membersihkan keranjang di database:", error);
+      showNotification("Gagal membersihkan keranjang.", "error");
+    }
+  };
   
   const cartCount = cartItems.reduce((count, item) => count + item.quantity, 0);
 

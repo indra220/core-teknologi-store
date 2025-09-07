@@ -1,8 +1,11 @@
+// src/app/login/page.tsx
+
 'use client';
 
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useNotification } from '@/components/notifications/NotificationProvider';
+import { useRouter } from 'next/navigation';
 
 function LoginForm() {
   const [username, setUsername] = useState('');
@@ -10,6 +13,7 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { showNotification } = useNotification();
+  const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +33,12 @@ function LoginForm() {
       setError(data.error || 'Terjadi kesalahan');
     } else {
       showNotification('Login berhasil! Selamat datang kembali.', 'success');
-      // Navigasi akan ditangani oleh listener di Header
+      
+      // PERBAIKAN UTAMA: Arahkan ke halaman utama setelah login berhasil
+      // Ini akan memaksa seluruh aplikasi untuk me-render ulang state-nya.
+      setTimeout(() => {
+        router.push('/');
+      }, 1000); // Beri jeda 1 detik agar notifikasi sempat terbaca
     }
   };
   

@@ -1,3 +1,5 @@
+// src/types.ts
+
 export interface Laptop {
   id: string;
   name: string;
@@ -12,7 +14,6 @@ export interface Laptop {
   created_at: string;
 }
 
-// Tambahkan atau perbarui interface Profile
 export interface Profile {
   id: string;
   updated_at: string | null;
@@ -21,4 +22,34 @@ export interface Profile {
   avatar_url: string | null;
   role: string;
   email: string | null;
+}
+
+// --- TAMBAHKAN INTERFACE BARU DI BAWAH ---
+
+export interface ShippingAddress {
+  address_line_1: string;
+  admin_area_2: string; // City
+  admin_area_1: string; // State/Province
+  postal_code: string;
+  country_code: string;
+}
+
+export interface OrderItem {
+  id: string;
+  quantity: number;
+  price: number;
+  product_name: string;
+  product_image_url: string;
+  laptops: Laptop; // Untuk relasi data
+}
+
+export interface Order {
+  id: string;
+  created_at: string;
+  total_amount: number;
+  status: string;
+  paypal_order_id: string;
+  shipping_address: ShippingAddress;
+  order_items: OrderItem[];
+  profiles: { username: string } | null; // Untuk menyimpan data profil pembeli
 }
