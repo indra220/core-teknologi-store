@@ -1,5 +1,6 @@
 // src/app/layout.tsx
 
+// PERBAIKAN: Hapus 'Metadata' dari baris impor di bawah ini
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -10,6 +11,7 @@ import { CartProvider } from "@/context/CartContext";
 import TopLoader from "@/components/TopLoader";
 import { Suspense } from "react";
 import { PayPalProvider } from "@/context/PayPalProvider";
+import StatusNotifier from "@/components/notifications/StatusNotifier";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,7 +20,6 @@ export const metadata: Metadata = {
   description: "Pusat penjualan laptop dan teknologi terpercaya.",
 };
 
-// PERBAIKAN: Ubah React.Node menjadi React.ReactNode
 export default function RootLayout({ children }: { children: React.ReactNode; }) {
   return (
     <html lang="en">
@@ -28,6 +29,9 @@ export default function RootLayout({ children }: { children: React.ReactNode; })
         </Suspense>
         
         <NotificationProvider>
+          <Suspense fallback={null}>
+            <StatusNotifier />
+          </Suspense>
           <PayPalProvider>
             <CartProvider>
               <Header />
