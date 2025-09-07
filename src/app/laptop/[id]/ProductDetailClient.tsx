@@ -1,3 +1,5 @@
+// src/app/laptop/[id]/ProductDetailClient.tsx
+
 'use client';
 
 import { useState, useEffect } from "react";
@@ -13,8 +15,10 @@ export default function ProductDetailClient({ product }: { product: Laptop }) {
   const [user, setUser] = useState<User | null>(null);
   const { showNotification } = useNotification();
   const router = useRouter();
-  const { addToCart } = useCart(); // Ambil fungsi addToCart dari context
+  // Ambil fungsi addToCart dari context
+  const { addToCart } = useCart();
 
+  // useEffect untuk memeriksa status login pengguna saat komponen dimuat
   useEffect(() => {
     const fetchUser = async () => {
       const supabase = createClient();
@@ -24,13 +28,14 @@ export default function ProductDetailClient({ product }: { product: Laptop }) {
     fetchUser();
   }, []);
 
+  // Fungsi yang akan dipanggil saat tombol diklik
   const handleAddToCart = () => {
     if (!user) {
       showNotification('Anda harus login terlebih dahulu!', 'error');
       router.push('/login');
       return;
     }
-    // Panggil fungsi addToCart dengan data produk lengkap dan jumlahnya
+    // Panggil fungsi addToCart dari context dengan data produk dan jumlah
     addToCart(product, quantity);
   };
 
@@ -67,7 +72,7 @@ export default function ProductDetailClient({ product }: { product: Laptop }) {
       </div>
       <div className="flex items-center space-x-4">
         <button
-          onClick={handleAddToCart}
+          onClick={handleAddToCart} // PASTIKAN onClick memanggil fungsi handleAddToCart
           type="button"
           className="flex-grow py-4 px-6 rounded-xl font-bold text-lg text-white bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 transition"
         >
