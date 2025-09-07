@@ -5,6 +5,7 @@
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useNotification } from '@/components/notifications/NotificationProvider';
+// 1. Impor useRouter
 import { useRouter } from 'next/navigation';
 
 function LoginForm() {
@@ -13,6 +14,7 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { showNotification } = useNotification();
+  // 2. Inisialisasi useRouter
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -34,10 +36,10 @@ function LoginForm() {
     } else {
       showNotification('Login berhasil! Selamat datang kembali.', 'success');
       
-      // PERBAIKAN UTAMA: Arahkan ke halaman utama setelah login berhasil
-      // Ini akan memaksa seluruh aplikasi untuk me-render ulang state-nya.
+      // 3. PERBAIKAN UTAMA: Refresh halaman setelah notifikasi muncul
+      // Ini akan membuat header dan komponen lain me-render ulang dengan data user baru.
       setTimeout(() => {
-        router.push('/');
+        router.refresh();
       }, 1000); // Beri jeda 1 detik agar notifikasi sempat terbaca
     }
   };
