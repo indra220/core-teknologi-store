@@ -4,7 +4,8 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { revalidatePath } from 'next/cache';
+// Hapus impor revalidatePath karena tidak digunakan lagi
+// import { revalidatePath } from 'next/cache'; 
 
 type FormState = {
   message: string | null;
@@ -38,7 +39,8 @@ export async function login(prevState: FormState, formData: FormData): Promise<F
     return { message: 'Username atau password salah.' };
   }
 
-  revalidatePath('/', 'layout');
-  // PERBAIKAN: Tambahkan parameter ?message=login_success saat redirect
+  // HAPUS BARIS INI UNTUK MEMPERCEPAT
+  // revalidatePath('/', 'layout');
+  
   redirect('/?message=login_success');
 }

@@ -14,7 +14,6 @@ interface CartContextType {
   addToCart: (product: Laptop, quantity: number) => Promise<void>;
   removeFromCart: (productId: string) => Promise<void>;
   updateQuantity: (productId: string, quantity: number) => Promise<void>;
-  // PERBAIKAN: Ubah tipe clearCart menjadi Promise<void>
   clearCart: () => Promise<void>;
   cartCount: number;
   loading: boolean;
@@ -73,24 +72,52 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addToCart = async (product: Laptop, quantity: number) => {
     if (!user) return;
+
+    const previousCart = [...cartItems];
+    
+    const existingItem = cartItems.find(item => item.id === product.id);
+    const newQuantity = (existingItem?.quantity || 0) + quantity;
+    
+    let newCartItems: CartItem[];
+    if (existingItem) {
+      newCartItems = cartItems.map(item => item.id === product.id ? { ...item, quantity: newQuantity } : item);
+    } else {
+      newCartItems = [...cartItems, { ...product, quantity: newQuantity }];
+    }
+    
+    // 1. Langsung update UI (Optimistic Update)
+    setCartItems(newCartItems);
+    showNotification(`${quantity} "${product.name}" ditambahkan!`, 'success');
+
+    // 2. Lakukan permintaan ke database
     const { error } = await supabase.from('cart_items').upsert({
       user_id: user.id,
       product_id: product.id,
-      quantity: (cartItems.find(item => item.id === product.id)?.quantity || 0) + quantity
+      quantity: newQuantity
     }, { onConflict: 'user_id, product_id' });
-    
-    if (!error) {
-      await fetchCartItems(user.id);
-      showNotification(`${quantity} "${product.name}" ditambahkan!`, 'success');
+
+    // 3. Jika gagal, kembalikan state UI dan tampilkan error
+    if (error) {
+      showNotification("Gagal menambahkan produk.", "error");
+      setCartItems(previousCart);
     }
   };
   
   const removeFromCart = async (productId: string) => {
     if (!user) return;
+    
+    const previousCart = [...cartItems];
+    const newCartItems = cartItems.filter(item => item.id !== productId);
+
+    // Optimistic Update
+    setCartItems(newCartItems);
+    showNotification('Produk dihapus dari keranjang.', 'info');
+
     const { error } = await supabase.from('cart_items').delete().match({ user_id: user.id, product_id: productId });
-    if (!error) {
-      await fetchCartItems(user.id);
-      showNotification('Produk dihapus dari keranjang.', 'info');
+    
+    if (error) {
+       showNotification("Gagal menghapus produk.", "error");
+       setCartItems(previousCart);
     }
   };
   
@@ -100,22 +127,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
       await removeFromCart(productId);
       return;
     }
+
+    const previousCart = [...cartItems];
+    const newCartItems = cartItems.map(item => item.id === productId ? { ...item, quantity: quantity } : item);
+
+    // Optimistic Update
+    setCartItems(newCartItems);
+    
     const { error } = await supabase.from('cart_items').update({ quantity }).match({ user_id: user.id, product_id: productId });
-    if (!error) {
-      await fetchCartItems(user.id);
+    
+    if (error) {
+       showNotification("Gagal memperbarui kuantitas.", "error");
+       setCartItems(previousCart);
     }
   };
   
-  // FUNGSI YANG DISEMPURNAKAN
   const clearCart = async () => {
     if (!user) {
       setCartItems([]);
       return;
     }
-    // Hapus semua item dari database untuk user yang sedang login
     const { error } = await supabase.from('cart_items').delete().eq('user_id', user.id);
     if (!error) {
-      // Jika berhasil, kosongkan state lokal
       setCartItems([]);
     } else {
       console.error("Gagal membersihkan keranjang di database:", error);

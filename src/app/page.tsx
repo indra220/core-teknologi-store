@@ -1,10 +1,21 @@
+// src/app/page.tsx
+
 import { createClient } from "@/lib/supabase/server";
 import Link from 'next/link';
-import Image from 'next/image'; // 1. Impor komponen Image
+import Image from 'next/image';
 import { Laptop } from "@/types";
 
-// 2. Atur caching data selama 1 jam (3600 detik)
+// --- OPTIMISASI PERFORMA TINGKAT LANJUT ---
+
+// 1. Jalankan halaman ini di Edge Runtime untuk cold start super cepat.
+export const runtime = 'edge';
+
+// 2. Cache halaman ini di Edge selama 1 jam (3600 detik).
+// Pengunjung akan mendapatkan versi instan dari cache.
+// Next.js akan memperbarui cache di latar belakang setelah 1 jam.
 export const revalidate = 3600;
+
+// --- Sisa kode tidak berubah ---
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -19,7 +30,6 @@ export default async function HomePage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
         {laptops?.map((laptop: Laptop) => (
           <div key={laptop.id} className="bg-white rounded-lg shadow-lg overflow-hidden transition-transform transform hover:-translate-y-2 duration-300 flex flex-col">
-            {/* 3. Perbarui bagian gambar */}
             <Link href={`/laptop/${laptop.id}`} className="block relative aspect-video">
               <Image
                 src={laptop.image_url || '/placeholder.png'}

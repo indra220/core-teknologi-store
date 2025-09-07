@@ -6,20 +6,28 @@ import { useState, useMemo, useEffect } from "react";
 import { Order, Laptop } from "@/types";
 import Image from "next/image";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, PointElement, LineElement } from 'chart.js';
-import { Bar, Line } from 'react-chartjs-2';
+import { CubeTransparentIcon, BanknotesIcon } from '@heroicons/react/24/outline';
+import dynamic from "next/dynamic"; // 1. Impor 'dynamic'
 
-// --- IMPOR IKON BARU DARI HEROICONS ---
-import { CubeTransparentIcon, BanknotesIcon } from '@heroicons/react/24/outline'; // Contoh ikon
+// 2. Muat komponen Chart secara dinamis
+const Bar = dynamic(() => import('react-chartjs-2').then(mod => mod.Bar), {
+  ssr: false, // Jangan render di server
+  loading: () => <div className="h-64 flex items-center justify-center">Memuat grafik...</div>
+});
+
+const Line = dynamic(() => import('react-chartjs-2').then(mod => mod.Line), {
+  ssr: false,
+  loading: () => <div className="h-64 flex items-center justify-center">Memuat grafik...</div>
+});
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, PointElement, LineElement);
 
 // --- Komponen & Fungsi Bantuan ---
-// MoneyIcon lama dihapus, diganti BanknotesIcon dari heroicons
-// BoxIcon lama dihapus, diganti CubeTransparentIcon dari heroicons
 const SearchIcon = () => <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>;
 const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 // --- Komponen Utama ---
+// (Sisa kode komponen tetap sama, tidak perlu diubah)
 export default function ReportClientComponent({ allOrders, allLaptops }: { allOrders: Order[], allLaptops: Laptop[] }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -73,25 +81,22 @@ export default function ReportClientComponent({ allOrders, allLaptops }: { allOr
     <>
       {/* Bagian Statistik */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-        {/* KARTU TOTAL PRODUK */}
         <div className="bg-gradient-to-br from-blue-50 to-indigo-100 p-6 rounded-2xl shadow-lg border flex items-center space-x-4">
           <div className="bg-white p-3 rounded-full shadow-md">
-            <CubeTransparentIcon className="h-8 w-8 text-blue-500" /> {/* Ikon baru */}
+            <CubeTransparentIcon className="h-8 w-8 text-blue-500" />
           </div>
           <div>
             <h3 className="text-base font-semibold text-gray-500">Total Produk</h3>
             <p className="text-4xl font-extrabold text-gray-900">{totalProducts}</p>
           </div>
         </div>
-
-        {/* KARTU TOTAL PENDAPATAN - PERUBAHAN UTAMA DI SINI */}
         <div className="bg-gradient-to-br from-green-50 to-teal-100 p-6 rounded-2xl shadow-lg border flex items-center space-x-4">
-          <div className="bg-white p-3 rounded-full shadow-md border border-green-200"> {/* Tambah border & shadow */}
-            <BanknotesIcon className="h-8 w-8 text-green-600" /> {/* Ikon baru, warna lebih gelap */}
+          <div className="bg-white p-3 rounded-full shadow-md border border-green-200">
+            <BanknotesIcon className="h-8 w-8 text-green-600" />
           </div>
           <div>
             <h3 className="text-base font-semibold text-gray-500">Total Pendapatan</h3>
-            <p className="text-4xl font-extrabold text-green-700"> {/* Warna teks lebih gelap */}
+            <p className="text-4xl font-extrabold text-green-700">
               {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(totalRevenue)}
             </p>
           </div>

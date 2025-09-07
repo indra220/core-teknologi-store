@@ -1,6 +1,5 @@
 // src/app/layout.tsx
 
-// PERBAIKAN: Hapus 'Metadata' dari baris impor di bawah ini
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -9,21 +8,26 @@ import Header from "@/components/Header";
 import { NotificationProvider } from "@/components/notifications/NotificationProvider";
 import { CartProvider } from "@/context/CartContext";
 import TopLoader from "@/components/TopLoader";
-import { Suspense } from "react";
+import { Suspense, ReactNode } from "react"; // Impor ReactNode
 import { PayPalProvider } from "@/context/PayPalProvider";
 import StatusNotifier from "@/components/notifications/StatusNotifier";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ 
+  subsets: ["latin"],
+  display: 'swap',
+  variable: '--font-inter',
+});
 
 export const metadata: Metadata = {
   title: "Core Teknologi Store",
   description: "Pusat penjualan laptop dan teknologi terpercaya.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode; }) {
+// PERBAIKAN: Ubah tipe 'React.Node' menjadi 'ReactNode'
+export default function RootLayout({ children }: { children: ReactNode; }) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} bg-gray-100 text-gray-900`}>
+    <html lang="en" className={inter.variable}>
+      <body className={`bg-gray-100 text-gray-900 font-sans`}>
         <Suspense fallback={null}>
           <TopLoader />
         </Suspense>
