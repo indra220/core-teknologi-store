@@ -1,9 +1,11 @@
+// src/app/admin/users/page.tsx
+
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import UserList from "./UserList"; // Impor komponen Client
+import UserList from "./UserList";
 
-export const revalidate = 0; // Selalu ambil data terbaru
+export const revalidate = 60; // <-- UBAH DARI 0 MENJADI 60
 
 export default async function ManageUsersPage() {
   const supabase = await createClient();

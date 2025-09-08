@@ -7,11 +7,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { ClockIcon, CubeTransparentIcon, ComputerDesktopIcon, AdjustmentsHorizontalIcon } from '@heroicons/react/24/outline';
 import ProductDetailClient from "./ProductDetailClient";
-import { Suspense } from "react"; // 1. Impor Suspense
+import { Suspense } from "react";
 
+export const runtime = 'edge'; // <-- TAMBAHKAN BARIS INI
 export const revalidate = 3600;
 
-// Komponen Skeleton untuk fallback Suspense
 function ProductDetailSkeleton() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 animate-pulse">
@@ -39,7 +39,6 @@ function ProductDetailSkeleton() {
   );
 }
 
-// 2. Buat komponen async terpisah untuk mengambil data
 async function ProductDetails({ productId }: { productId: string }) {
   const supabase = await createClient();
 
@@ -67,7 +66,7 @@ async function ProductDetails({ productId }: { productId: string }) {
   };
 
   return (
-     <div className="bg-gray-800 p-8 md:p-12 rounded-3xl shadow-2xl border border-gray-700 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
+     <div className="bg-gray-800 p-6 md:p-12 rounded-3xl shadow-2xl border border-gray-700 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
         <div className="flex flex-col items-center justify-center p-4 bg-gray-700 rounded-2xl shadow-inner border border-gray-600">
           <div className="relative w-full aspect-square max-w-lg">
             <Image
@@ -82,7 +81,7 @@ async function ProductDetails({ productId }: { productId: string }) {
         </div>
         <div className="flex flex-col">
           <p className="text-sm text-blue-400 font-semibold uppercase tracking-wider">{laptop.brand}</p>
-          <h1 className="mt-2 text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white leading-tight tracking-tight">
+          <h1 className="mt-2 text-3xl sm:text-4xl font-extrabold text-white leading-tight tracking-tight">
             {laptop.name}
           </h1>
           <p className="mt-6 text-base text-gray-300 leading-relaxed max-w-prose">
@@ -106,7 +105,7 @@ async function ProductDetails({ productId }: { productId: string }) {
 
 export default async function DetailLaptopPage({ params }: { params: { id: string } }) {
   return (
-    <div className="max-w-6xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+    <div className="max-w-6xl mx-auto py-8 sm:py-12 px-4">
       <div className="mb-8">
         <Link 
           href="/" 
@@ -116,8 +115,6 @@ export default async function DetailLaptopPage({ params }: { params: { id: strin
           Kembali
         </Link>
       </div>
-
-      {/* 3. Bungkus komponen async dengan Suspense */}
       <Suspense fallback={<ProductDetailSkeleton />}>
         <ProductDetails productId={params.id} />
       </Suspense>

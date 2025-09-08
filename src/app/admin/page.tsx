@@ -1,11 +1,11 @@
 // src/app/admin/page.tsx
 
 import { createClient } from "@/lib/supabase/server";
-import { Laptop } from "@/types";
 import Link from "next/link";
-import Image from 'next/image';
 import { redirect } from "next/navigation";
-import AdminProductList from "./ProductList"; // Komponen baru untuk sisi klien
+import AdminProductList from "./ProductList";
+
+export const revalidate = 60; // <-- TAMBAHKAN BARIS INI
 
 // Komponen Ikon tetap sama
 const UsersIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.122-1.28-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.653.122-1.28.356-1.857m0 0a5.002 5.002 0 019.288 0M12 14a5 5 0 100-10 5 5 0 000 10z" /></svg> );
