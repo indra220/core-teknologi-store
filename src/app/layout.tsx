@@ -1,16 +1,17 @@
 // src/app/layout.tsx
 
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import "@/styles/nprogress.css";
 import Header from "@/components/Header";
 import { NotificationProvider } from "@/components/notifications/NotificationProvider";
 import { CartProvider } from "@/context/CartContext";
 import TopLoader from "@/components/TopLoader";
-import { Suspense, ReactNode } from "react"; // Impor ReactNode
+import { Suspense, ReactNode } from "react";
 import { PayPalProvider } from "@/context/PayPalProvider";
 import StatusNotifier from "@/components/notifications/StatusNotifier";
+// HAPUS: import { Providers } from "./Providers";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -18,16 +19,23 @@ const inter = Inter({
   variable: '--font-inter',
 });
 
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-jakarta-sans',
+});
+
 export const metadata: Metadata = {
   title: "Core Teknologi Store",
   description: "Pusat penjualan laptop dan teknologi terpercaya.",
 };
 
-// PERBAIKAN: Ubah tipe 'React.Node' menjadi 'ReactNode'
 export default function RootLayout({ children }: { children: ReactNode; }) {
+  // HAPUS: suppressHydrationWarning
   return (
-    <html lang="en" className={inter.variable}>
-      <body className={`bg-gray-100 text-gray-900 font-sans`}>
+    <html lang="en" className={`${inter.variable} ${jakarta.variable}`}>
+      <body className={`font-sans`}>
+        {/* HAPUS: Wrapper <Providers> */}
         <Suspense fallback={null}>
           <TopLoader />
         </Suspense>
