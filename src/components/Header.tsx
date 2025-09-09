@@ -9,6 +9,7 @@ import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import { useCart } from '@/context/CartContext';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 
 const Cart = dynamic(() => import('./Cart'), { 
   ssr: false,
@@ -88,16 +89,28 @@ export default function Header() {
 
   const profileLink = profile?.isAdmin ? "/admin" : "/profile";
 
+  // --- PERUBAHAN DI SINI UNTUK LATAR BELAKANG HEADER ---
   const headerClasses = isScrolled
-    ? 'bg-white/70 shadow-md backdrop-blur-lg dark:bg-gray-900/70 dark:border-b dark:border-gray-800'
-    : 'bg-transparent';
+    ? 'bg-white shadow-md dark:bg-gray-800 dark:border-b dark:border-gray-700' // Pastikan dark mode juga disesuaikan
+    : 'bg-white shadow-md dark:bg-gray-800 dark:border-b dark:border-gray-700'; // Selalu putih/gelap di dark mode
+  // --- AKHIR PERUBAHAN ---
   
   return (
     <>
       <header className={`sticky top-0 z-50 transition-all duration-300 ${headerClasses}`}>
         <nav className="container mx-auto flex justify-between items-center p-4">
-          <Link href="/" className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Core Teknologi
+          
+          <Link href="/" className="flex items-center space-x-3">
+            <Image
+              src="/images/Logo-core.png" 
+              alt="Core Teknologi Logo"
+              width={64}  // Ukuran diperbesar secara signifikan
+              height={64} // Ukuran diperbesar secara signifikan
+              className="h-16 w-16"
+            />
+            <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              Core Teknologi
+            </span>
           </Link>
           
           <div className="flex items-center space-x-2 sm:space-x-4 text-gray-800 dark:text-gray-200">
