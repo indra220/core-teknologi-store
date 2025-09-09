@@ -9,7 +9,7 @@ import { ClockIcon, CubeTransparentIcon, ComputerDesktopIcon, AdjustmentsHorizon
 import ProductDetailClient from "./ProductDetailClient";
 import { Suspense } from "react";
 
-export const runtime = 'edge'; // <-- TAMBAHKAN BARIS INI
+export const runtime = 'edge';
 export const revalidate = 3600;
 
 function ProductDetailSkeleton() {
@@ -102,18 +102,19 @@ async function ProductDetails({ productId }: { productId: string }) {
   );
 }
 
-
 export default async function DetailLaptopPage({ params }: { params: { id: string } }) {
   return (
     <div className="max-w-6xl mx-auto py-8 sm:py-12 px-4">
       <div className="mb-8">
+        {/* --- PERUBAHAN DI SINI --- */}
         <Link 
-          href="/" 
+          href="/products" // Diubah dari "/" menjadi "/products"
           className="inline-flex items-center gap-2 text-gray-300 bg-gray-800 border border-gray-700 font-semibold px-4 py-2 rounded-lg hover:bg-gray-700"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-          Kembali
+          Kembali ke Daftar Produk
         </Link>
+        {/* --- AKHIR PERUBAHAN --- */}
       </div>
       <Suspense fallback={<ProductDetailSkeleton />}>
         <ProductDetails productId={params.id} />
