@@ -3,24 +3,30 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from 'next/link';
 import Image from 'next/image';
-import { Laptop } from "@/types";
+import { Product } from "@/types";
 
 export const runtime = 'edge';
 export const revalidate = 3600; // Revalidate setiap 1 jam
 
-async function getBestSellingProducts(limit = 4): Promise<Laptop[]> {
+/**
+ * Fungsi ini mengambil produk yang paling banyak dibeli (best-selling).
+ * Logikanya adalah menjumlahkan kuantitas dari setiap produk yang terjual
+ * di tabel 'order_items', kemudian mengambil detail produk tersebut.
+ */
+async function getBestSellingProducts(limit = 4): Promise<Product[]> {
   const supabase = await createClient();
 
-  // 1. Ambil semua item yang pernah dipesan
+  // 1. Ambil semua item yang pernah dipesan beserta kuantitasnya
   const { data: orderItems, error: orderItemsError } = await supabase
     .from('order_items')
     .select('product_id, quantity');
 
   if (orderItemsError || !orderItems) {
+    console.error("Gagal mengambil data pesanan:", orderItemsError);
     return [];
   }
 
-  // 2. Hitung total kuantitas penjualan untuk setiap produk
+  // 2. Hitung total kuantitas penjualan untuk setiap ID produk
   const productSales = orderItems.reduce((acc, item) => {
     if (item.product_id) {
       acc[item.product_id] = (acc[item.product_id] || 0) + item.quantity;
@@ -28,38 +34,39 @@ async function getBestSellingProducts(limit = 4): Promise<Laptop[]> {
     return acc;
   }, {} as Record<string, number>);
 
-  // 3. Urutkan produk berdasarkan total penjualan dan ambil ID teratas
+  // 3. Urutkan ID produk berdasarkan total penjualan tertinggi
   const topProductIds = Object.entries(productSales)
-    .sort(([, a], [, b]) => b - a)
+    .sort(([, a], [, b]) => b - a) // 'b - a' untuk urutan menurun (terlaris)
     .slice(0, limit)
     .map(([id]) => id);
 
+  // Jika tidak ada penjualan sama sekali, tampilkan produk terbaru sebagai alternatif
   if (topProductIds.length === 0) {
-    // Jika tidak ada penjualan, tampilkan produk terbaru sebagai fallback
-    const { data: latestLaptops } = await supabase
-      .from('laptops')
-      .select('*')
+    const { data: latestProducts } = await supabase
+      .from('products')
+      .select(`*, product_variants(price)`)
       .order('created_at', { ascending: false })
       .limit(limit);
-    return latestLaptops || [];
+    return latestProducts || [];
   }
 
   // 4. Ambil detail produk terlaris dari database
   const { data: bestSellers, error: bestSellersError } = await supabase
-    .from('laptops')
-    .select('*')
+    .from('products')
+    .select(`*, product_variants(price)`)
     .in('id', topProductIds);
 
   if (bestSellersError) {
+    console.error("Gagal mengambil produk terlaris:", bestSellersError);
     return [];
   }
 
-  // Urutkan hasil sesuai urutan terlaris
+  // Pastikan urutan produk sesuai dengan urutan terlarisnya
   return bestSellers.sort((a, b) => productSales[b.id] - productSales[a.id]);
 }
 
 export default async function HomePage() {
-  const laptops = await getBestSellingProducts(4); // Ambil 4 produk terlaris
+  const products = await getBestSellingProducts(4);
 
   return (
     <section className="py-8">
@@ -72,11 +79,9 @@ export default async function HomePage() {
           Temukan laptop impian Anda dengan performa tak tertandingi dan penawaran eksklusif hanya di Core Teknologi.
         </p>
         <div className="mt-8 flex justify-center gap-4">
-          {/* --- PERUBAHAN DI SINI: LINK KE HALAMAN PRODUK --- */}
           <Link href="/products" className="inline-block bg-blue-600 text-white font-semibold px-8 py-3 rounded-lg hover:bg-blue-700 transition-transform transform hover:scale-105 shadow-lg">
             Lihat Semua Produk
           </Link>
-          {/* --- AKHIR PERUBAHAN --- */}
         </div>
       </div>
 
@@ -85,30 +90,36 @@ export default async function HomePage() {
           <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-gray-50">Produk Unggulan Kami</h2>
           <p className="mt-4 text-lg text-gray-600 dark:text-gray-300">Teknologi terlaris yang kami pilih khusus untuk Anda.</p>
         </div>
-        {laptops.length > 0 ? (
+        {products.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {laptops.map((laptop: Laptop) => (
-              <div key={laptop.id} className="group bg-white dark:bg-gray-800 rounded-2xl shadow-lg dark:shadow-2xl dark:shadow-gray-950 overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 border border-gray-100 dark:border-gray-700 flex flex-col">
-                <Link href={`/laptop/${laptop.id}`} className="block relative aspect-video overflow-hidden">
-                  <Image
-                    src={laptop.image_url || '/placeholder.png'}
-                    alt={laptop.name}
-                    fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-110"
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                  />
-                </Link>
-                <div className="p-5 flex flex-col flex-grow">
-                  <p className="text-gray-500 dark:text-gray-400 text-sm">{laptop.brand}</p>
-                  <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 truncate mt-1 flex-grow">
-                    <Link href={`/laptop/${laptop.id}`} className="hover:text-blue-600 dark:hover:text-blue-400">{laptop.name}</Link>
-                  </h3>
-                  <p className="text-2xl font-extrabold text-blue-700 dark:text-blue-400 mt-4">
-                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(laptop.price)}
-                  </p>
+            {products.map((product: Product) => {
+              const displayPrice = product.product_variants && product.product_variants.length > 0
+                ? Math.min(...product.product_variants.map(v => v.price))
+                : 0;
+
+              return (
+                <div key={product.id} className="group bg-white dark:bg-gray-800 rounded-2xl shadow-lg dark:shadow-2xl dark:shadow-gray-950 overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 border border-gray-100 dark:border-gray-700 flex flex-col">
+                  <Link href={`/laptop/${product.id}`} className="block relative aspect-video overflow-hidden">
+                    <Image
+                      src={product.image_url || '/placeholder.png'}
+                      alt={product.name}
+                      fill
+                      className="object-cover transition-transform duration-500 group-hover:scale-110"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                    />
+                  </Link>
+                  <div className="p-5 flex flex-col flex-grow">
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">{product.brand}</p>
+                    <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 truncate mt-1 flex-grow">
+                      <Link href={`/laptop/${product.id}`} className="hover:text-blue-600 dark:hover:text-blue-400">{product.name}</Link>
+                    </h3>
+                    <p className="text-2xl font-extrabold text-blue-700 dark:text-blue-400 mt-4">
+                      {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(displayPrice)}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <p className="text-center text-gray-500 py-10">Belum ada produk unggulan untuk ditampilkan.</p>
