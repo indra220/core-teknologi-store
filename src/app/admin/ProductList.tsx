@@ -38,13 +38,22 @@ export default function AdminProductList({ initialLaptops }: { initialLaptops: L
       
       <div className="overflow-x-auto">
         {laptops.length > 0 ? (
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-200 border-separate border-spacing-0">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produk</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga</th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Produk
+                </th>
+                {/* --- PERUBAHAN DI SINI: Kolom Sticky --- */}
+                <th scope="col" className="sticky right-[248px] bg-gray-50 w-40 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Brand
+                </th>
+                <th scope="col" className="sticky right-[128px] bg-gray-50 w-48 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Harga
+                </th>
+                <th scope="col" className="sticky right-0 bg-gray-50 w-32 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Aksi
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -55,17 +64,20 @@ export default function AdminProductList({ initialLaptops }: { initialLaptops: L
                       <div className="flex-shrink-0 h-12 w-12 relative">
                         <Image src={laptop.image_url || '/placeholder.png'} alt={laptop.name} fill className="rounded-lg object-cover" sizes="48px" />
                       </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{laptop.name}</div>
-                        <div className="text-xs text-gray-500">{laptop.processor} / {laptop.ram} / {laptop.storage}</div>
+                      <div className="ml-4 min-w-0">
+                        <div className="text-sm font-medium text-gray-900 truncate">{laptop.name}</div>
+                        <div className="text-xs text-gray-500 truncate">{laptop.processor} / {laptop.ram} / {laptop.storage}</div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">{laptop.brand}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
+                  {/* --- PERUBAHAN DI SINI: Kolom Sticky --- */}
+                  <td className="sticky right-[248px] bg-white hover:bg-gray-50 w-40 px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">
+                    {laptop.brand}
+                  </td>
+                  <td className="sticky right-[128px] bg-white hover:bg-gray-50 w-48 px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
                     {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(laptop.price)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                  <td className="sticky right-0 bg-white hover:bg-gray-50 w-32 px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                     <Link href={`/admin/products/${laptop.id}/edit`} className="text-indigo-600 hover:text-indigo-900 mr-4">Edit</Link>
                     <button 
                       onClick={() => handleDelete(laptop.id, laptop.image_url)}
