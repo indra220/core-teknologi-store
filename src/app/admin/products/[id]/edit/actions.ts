@@ -1,87 +1,84 @@
+// src/app/admin/products/[id]/edit/actions.ts
 'use server';
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { z } from 'zod';
+// 'redirect' yang tidak terpakai telah dihapus dari import ini.
 
 type FormState = {
   message: string | null;
   type: 'success' | 'error' | null;
 };
 
-const parseCurrency = (value: string | undefined): number => {
-  if (!value) return 0;
-  return Number(value.replace(/[^0-9]/g, ""));
-};
+// Definisikan tipe data yang jelas untuk varian yang datang dari form
+// untuk menggantikan penggunaan 'any'
+type VariantFromClient = {
+  id?: string; // id bisa jadi tidak ada untuk varian baru
+  product_id?: string;
+  price: string | number;
+  stock: string | number;
+  processor: string;
+  ram: string;
+  storage: string;
+  screen_size: string;
+}
 
-const UpdateProductSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string().min(3, "Nama produk minimal 3 karakter."),
-  brand: z.string().min(2, "Nama brand minimal 2 karakter."),
-  price: z.number().min(1, "Harga tidak boleh nol."),
-  image: z.instanceof(File).optional(),
-});
-
-// Pastikan fungsi ini diekspor (ada 'export' di depannya)
-export async function updateProduct(prevState: FormState, formData: FormData): Promise<FormState> {
+export async function updateProductAndVariants(prevState: FormState, formData: FormData): Promise<FormState> {
   const supabase = await createClient();
-  const rawData = Object.fromEntries(formData.entries());
-
-  const priceNumber = parseCurrency(rawData.price as string);
   
-  const dataToValidate = { ...rawData, price: priceNumber };
-  const validatedFields = UpdateProductSchema.safeParse(dataToValidate);
+  const productId = formData.get('productId') as string;
+  const variants: VariantFromClient[] = JSON.parse(formData.get('variants') as string);
+  const variantsToDelete: string[] = JSON.parse(formData.get('variantsToDelete') as string);
 
-  if (!validatedFields.success) {
-    const errorMessage = Object.values(validatedFields.error.flatten().fieldErrors).join(' ');
-    return { message: errorMessage, type: 'error' };
-  }
-
-  const { id, name, brand, price, image } = validatedFields.data;
-  let imageUrl = formData.get('current_image_url') as string;
-
-  if (image && image.size > 0) {
-    const fileExtension = image.name.split('.').pop();
-    const fileName = `${Math.random()}-${Date.now()}.${fileExtension}`;
-    
-    const { error: uploadError } = await supabase.storage
-      .from('product-images')
-      .upload(fileName, image);
-
-    if (uploadError) {
-      return { message: "Gagal mengunggah gambar baru: " + uploadError.message, type: 'error' };
-    }
-
-    imageUrl = supabase.storage.from('product-images').getPublicUrl(fileName).data.publicUrl;
-    
-    const oldFileName = (formData.get('current_image_url') as string).split('/').pop();
-    if (oldFileName) {
-      await supabase.storage.from('product-images').remove([oldFileName]);
-    }
-  }
-  
-  const otherData: { [key: string]: FormDataEntryValue } = {};
-  for (const key of ['processor', 'ram', 'storage', 'screen_size', 'description']) {
-    if (formData.has(key)) {
-      otherData[key] = formData.get(key) as string;
-    }
-  }
-
-  const { error: updateError } = await supabase
-    .from('laptops')
-    .update({ 
-      name, 
-      brand, 
-      price, 
-      image_url: imageUrl,
-      ...otherData 
+  // 1. Update data produk dasar
+  const { error: productError } = await supabase
+    .from('products')
+    .update({
+      name: formData.get('name') as string,
+      brand: formData.get('brand') as string,
+      description: formData.get('description') as string,
     })
-    .eq('id', id);
+    .eq('id', productId);
 
-  if (updateError) {
-    return { message: "Gagal memperbarui produk: " + updateError.message, type: 'error' };
+  if (productError) {
+    return { message: "Gagal memperbarui produk dasar: " + productError.message, type: 'error' };
   }
 
-  revalidatePath('/admin');
-  return { message: 'Produk berhasil diperbarui!', type: 'success' };
+  // Variabel 'existingVariants' dan 'newVariants' yang tidak terpakai telah dihapus.
+  
+  // 2. Update atau Insert (Upsert) varian yang ada dan baru
+  if (variants.length > 0) {
+    // Gunakan tipe 'VariantFromClient' yang sudah didefinisikan
+    const variantsToUpsert = variants.map((v: VariantFromClient) => ({
+      id: v.id, // Supabase akan menggunakan ini untuk update jika ada
+      product_id: productId,
+      price: Number(String(v.price).replace(/[^0-9]/g, "")),
+      stock: Number(v.stock) || 0,
+      processor: v.processor,
+      ram: v.ram,
+      storage: v.storage,
+      screen_size: v.screen_size,
+    }));
+
+    const { error: upsertError } = await supabase.from('product_variants').upsert(variantsToUpsert);
+    if (upsertError) {
+      return { message: "Gagal menyimpan varian: " + upsertError.message, type: 'error' };
+    }
+  }
+
+  // 3. Hapus varian yang ditandai untuk dihapus
+  if (variantsToDelete.length > 0) {
+    const { error: deleteError } = await supabase
+      .from('product_variants')
+      .delete()
+      .in('id', variantsToDelete);
+
+    if (deleteError) {
+      return { message: "Gagal menghapus varian: " + deleteError.message, type: 'error' };
+    }
+  }
+
+  revalidatePath('/admin/products');
+  revalidatePath(`/admin/products/${productId}/edit`);
+  return { message: 'Produk dan varian berhasil diperbarui!', type: 'success' };
 }

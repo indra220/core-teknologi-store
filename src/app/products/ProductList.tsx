@@ -6,10 +6,10 @@ import { useState, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Laptop } from '@/types';
+import { Product, ProductVariant } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// --- IKON-IKON BARU UNTUK FILTER ---
+// --- IKON-IKON (Tidak ada perubahan) ---
 const ChevronDownIcon = () => <svg className="h-5 w-5 transition-transform" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>;
 const ResetIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5M20 20v-5h-5M4 4l16 16" /></svg>;
 const BrandIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10.05 4.575a1.575 1.575 0 10-3.15 0v3m3.15-3v-1.5a1.575 1.575 0 013.15 0v1.5m-3.15 0l.075 5.925m3.075-5.925v3m3.15-3v-1.5a1.575 1.575 0 013.15 0v1.5m-3.15 0l.075 5.925m3.075-5.925v3m0 0l-5.25 5.25m-7.5-5.25l5.25 5.25m-1.5-5.25l-1.5 1.5" /></svg>;
@@ -20,9 +20,20 @@ const GraphicsIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-
 const PriceIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 const ScreenSizeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-1.621-.621A3 3 0 0115 18.257V17.25m-6 0h6" /><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.5v-7.5c0-.934.716-1.687 1.66-1.744A48.52 48.52 0 0112 4.5c2.278 0 4.542.164 6.74 1.012A1.72 1.72 0 0121 7.25v7.5" /></svg>;
 
-const CheckboxItem = ({ id, label, checked, onChange }: { id: string, label: string, checked: boolean, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
-  <label htmlFor={id} className="flex w-full items-center space-x-3 cursor-pointer text-sm px-2 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
-    <input type="checkbox" id={id} name={id} checked={checked} onChange={onChange} className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-gray-100 dark:bg-gray-900" />
+// 1. Komponen Checkbox diubah untuk MENGHAPUS fitur 'disabled'
+const CheckboxItem = ({ id, label, checked, onChange }: { id: string; label: string; checked: boolean; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; }) => (
+  <label
+    htmlFor={id}
+    className="flex w-full items-center space-x-3 text-sm px-2 py-2 rounded-md cursor-pointer text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+  >
+    <input
+      type="checkbox"
+      id={id}
+      name={id}
+      checked={checked}
+      onChange={onChange}
+      className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-gray-100 dark:bg-gray-900"
+    />
     <span>{label}</span>
   </label>
 );
@@ -50,9 +61,9 @@ const FilterDropdown = ({ title, icon, children, selectionCount }: { title: stri
 };
 
 interface BrandWithCount { brand: string; count: number; }
-interface ProductListProps { allLaptops: Laptop[]; allBrands: BrandWithCount[]; }
+interface ProductListProps { allProducts: Product[]; allBrands: BrandWithCount[]; }
 
-// ... (Fungsi-fungsi group* tidak berubah)
+// --- Helper Functions (Fungsi Bantuan) ---
 const groupProcessor = (processor: string): string => {
   const p = processor.toLowerCase();
   if (p.includes('core™ ultra 9')) return 'Intel® Core™ Ultra 9';
@@ -77,7 +88,6 @@ const groupProcessor = (processor: string): string => {
   if (p.includes('snapdragon')) return 'Snapdragon';
   return 'Lainnya';
 };
-
 const groupRam = (ram: string): string => {
   const r = ram.toLowerCase();
   if (r.includes('32gb')) return '32GB';
@@ -86,7 +96,6 @@ const groupRam = (ram: string): string => {
   if (r.includes('4gb')) return '4GB';
   return 'Lainnya';
 };
-
 const groupStorage = (storage: string): string => {
     const s = storage.toLowerCase();
     const isTB = s.includes('tb');
@@ -98,29 +107,59 @@ const groupStorage = (storage: string): string => {
     if (sizeInGB > 0 && sizeInGB < 256) return 'Less than 256GB';
     return 'Lainnya';
 };
-
-const groupGraphics = (laptop: Laptop): string => {
-  const name = (laptop.name || '').toLowerCase();
+const groupGraphics = (productName: string, variants: ProductVariant[]): string => {
+  const name = productName.toLowerCase();
   if (name.includes('rtx')) return 'NVIDIA® GeForce® RTX™';
   if (name.includes('geforce')) return 'NVIDIA® GeForce®';
   if (name.includes('radeon')) return 'AMD Radeon Vega';
   if (name.includes('adreno')) return 'Qualcomm® Adreno™';
+  const hasRadeon = variants.some(v => v.processor && v.processor.toLowerCase().includes('radeon'));
+  if (hasRadeon) return 'AMD Radeon Vega';
+  const hasAdreno = variants.some(v => v.processor && v.processor.toLowerCase().includes('adreno'));
+  if (hasAdreno) return 'Qualcomm® Adreno™';
   return 'Integrated Graphics';
 };
+// 2. Tambahkan helper function untuk Harga dan Ukuran Layar
+const groupPrice = (price: number): string | null => {
+  if (price >= 0 && price <= 10000000) return '0-10000000';
+  if (price > 10000000 && price <= 20000000) return '10000000-20000000';
+  if (price > 20000000) return '20000001-Infinity';
+  return null;
+};
 
-const STATIC_PROCESSOR_CATEGORIES = [
-    'Intel® Core™ i3', 'Intel® Core™ i5', 'Intel® Core™ i7', 'Intel® Celeron®',
-    'AMD Ryzen™ 3', 'AMD Ryzen™ 5', 'AMD Ryzen™ 7', 'Qualcomm',
-    'Intel® Core™ Ultra 5', 'Intel® Core™ Ultra 7', 'Intel® Core™ Ultra 9',
-    'AMD Ryzen™ AI 9', 'Qualcomm Snapdragon® X Elite', 'Qualcomm Snapdragon® X Plus',
-    'Intel® Core™ 5', 'Intel® Core™ 7', 'AMD Ryzen™ AI 7 350', 'AMD Ryzen™ AI 5 340', 'Snapdragon® X X1'
-];
+const groupScreenSize = (screenSize: string | null): string | null => {
+  if (!screenSize) return null;
+  const sizeValue = parseFloat(screenSize.replace(',', '.').match(/(\d+\.?\d*)/)?.[0] || '');
+  if (isNaN(sizeValue)) return null;
+  if (sizeValue < 12) return '<12';
+  if (sizeValue >= 12 && sizeValue <= 14.9) return '12-14';
+  if (sizeValue >= 15 && sizeValue <= 16.9) return '15-16';
+  if (sizeValue > 16) return '>16';
+  return null;
+};
+
+// --- Static Categories (Kategori Statis) ---
+const STATIC_PROCESSOR_CATEGORIES = [ 'Intel® Core™ i3', 'Intel® Core™ i5', 'Intel® Core™ i7', 'Intel® Core™ i9', 'Intel® Core™ Ultra 5', 'Intel® Core™ Ultra 7', 'Intel® Core™ Ultra 9', 'AMD Ryzen™ 3', 'AMD Ryzen™ 5', 'AMD Ryzen™ 7', 'AMD Ryzen™ 9', 'AMD Ryzen™ AI 9', 'Qualcomm Snapdragon® X Elite', 'Qualcomm Snapdragon® X Plus' ];
 const STATIC_RAM_CATEGORIES = ['4GB', '8GB', '16GB', '32GB'];
 const STATIC_STORAGE_CATEGORIES = ['Less than 256GB', '256GB - 512GB', '1TB and up'];
-const STATIC_GRAPHICS_CATEGORIES = ['Integrated Graphics', 'NVIDIA® GeForce® RTX™', 'AMD Radeon Vega', 'NVIDIA® GeForce®', 'Qualcomm® Adreno™'];
+const STATIC_GRAPHICS_CATEGORIES = ['Integrated Graphics', 'NVIDIA® GeForce®', 'NVIDIA® GeForce® RTX™', 'AMD Radeon Vega', 'Qualcomm® Adreno™'];
+// 3. Definisikan kategori statis untuk Harga dan Ukuran Layar
+const PRICE_RANGE_MAP = {
+  '0-10000000': 'Di bawah Rp 10 jt',
+  '10000000-20000000': 'Rp 10 jt - Rp 20 jt',
+  '20000001-Infinity': 'Di atas Rp 20 jt',
+};
+const STATIC_PRICE_RANGES = Object.keys(PRICE_RANGE_MAP);
+const SCREEN_SIZE_MAP = {
+  '<12': 'Kurang dari 12"',
+  '12-14': '12" - 14"',
+  '15-16': '15" - 16"',
+  '>16': 'Lebih dari 16"',
+};
+const STATIC_SCREEN_SIZES = Object.keys(SCREEN_SIZE_MAP);
 
 
-export default function ProductList({ allLaptops, allBrands }: ProductListProps) {
+export default function ProductList({ allProducts, allBrands }: ProductListProps) {
   const searchParams = useSearchParams();
   const searchTerm = searchParams.get('search') || '';
   
@@ -143,76 +182,86 @@ export default function ProductList({ allLaptops, allBrands }: ProductListProps)
     setSortOrder('default');
   };
 
-  const filterOptions = useMemo(() => {
-    const processors = new Map<string, number>();
-    const rams = new Map<string, number>();
-    const storages = new Map<string, number>();
-    const graphics = new Map<string, number>();
+  // 4. Logika penghitungan diperbarui untuk mencakup semua kategori
+  const filterCounts = useMemo(() => {
+    const processorCounts = new Map<string, number>();
+    const ramCounts = new Map<string, number>();
+    const storageCounts = new Map<string, number>();
+    const graphicsCounts = new Map<string, number>();
+    const priceCounts = new Map<string, number>();
+    const screenSizeCounts = new Map<string, number>();
 
-    STATIC_PROCESSOR_CATEGORIES.forEach(cat => processors.set(cat, 0));
-    STATIC_RAM_CATEGORIES.forEach(cat => rams.set(cat, 0));
-    STATIC_STORAGE_CATEGORIES.forEach(cat => storages.set(cat, 0));
-    STATIC_GRAPHICS_CATEGORIES.forEach(cat => graphics.set(cat, 0));
+    const countProducts = (
+      categoryMap: Map<string, number>,
+      getGroup: (variant: ProductVariant) => string | null,
+      getGroupFromProduct?: (product: Product) => string
+    ) => {
+      const productIdsByCategory = new Map<string, Set<string>>();
 
-    allLaptops.forEach(laptop => {
-        const pGroup = laptop.processor ? groupProcessor(laptop.processor) : null;
-        if(pGroup && processors.has(pGroup)) processors.set(pGroup, processors.get(pGroup)! + 1);
+      allProducts.forEach(product => {
+        if (getGroupFromProduct) {
+          const group = getGroupFromProduct(product);
+          if (!productIdsByCategory.has(group)) productIdsByCategory.set(group, new Set());
+          productIdsByCategory.get(group)!.add(product.id);
+        } else {
+          product.product_variants.forEach(variant => {
+            const group = getGroup(variant);
+            if (group) {
+              if (!productIdsByCategory.has(group)) productIdsByCategory.set(group, new Set());
+              productIdsByCategory.get(group)!.add(product.id);
+            }
+          });
+        }
+      });
+      productIdsByCategory.forEach((idSet, group) => {
+        categoryMap.set(group, idSet.size);
+      });
+    };
+    
+    countProducts(processorCounts, v => v.processor ? groupProcessor(v.processor) : null);
+    countProducts(ramCounts, v => v.ram ? groupRam(v.ram) : null);
+    countProducts(storageCounts, v => v.storage ? groupStorage(v.storage) : null);
+    countProducts(priceCounts, v => groupPrice(v.price));
+    countProducts(screenSizeCounts, v => groupScreenSize(v.screen_size));
+    countProducts(graphicsCounts, () => null, p => groupGraphics(p.name, p.product_variants));
 
-        const rGroup = laptop.ram ? groupRam(laptop.ram) : null;
-        if(rGroup && rams.has(rGroup)) rams.set(rGroup, rams.get(rGroup)! + 1);
+    return { processorCounts, ramCounts, storageCounts, graphicsCounts, priceCounts, screenSizeCounts };
+  }, [allProducts]);
 
-        const sGroup = laptop.storage ? groupStorage(laptop.storage) : null;
-        if(sGroup && storages.has(sGroup)) storages.set(sGroup, storages.get(sGroup)! + 1);
-        
-        const gGroup = groupGraphics(laptop);
-        if(gGroup && graphics.has(gGroup)) graphics.set(gGroup, graphics.get(gGroup)! + 1);
-    });
-    return {
-        processors: Array.from(processors.entries()),
-        rams: Array.from(rams.entries()),
-        storages: Array.from(storages.entries()),
-        graphics: Array.from(graphics.entries()),
-    }
-  }, [allLaptops]);
+  // Logika filter produk (tidak ada perubahan)
+  const filteredAndSortedProducts = useMemo(() => {
+    let products = [...allProducts];
 
-  const filteredAndSortedLaptops = useMemo(() => {
-    let laptops = [...allLaptops];
-
-    if (searchTerm) laptops = laptops.filter(l => l.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    if (selectedBrands.length > 0) laptops = laptops.filter(l => selectedBrands.includes(l.brand));
-    if (selectedProcessors.length > 0) laptops = laptops.filter(l => l.processor && selectedProcessors.includes(groupProcessor(l.processor)));
-    if (selectedRams.length > 0) laptops = laptops.filter(l => l.ram && selectedRams.includes(groupRam(l.ram)));
-    if (selectedStorages.length > 0) laptops = laptops.filter(l => l.storage && selectedStorages.includes(groupStorage(l.storage)));
-    if (selectedGraphics.length > 0) laptops = laptops.filter(l => selectedGraphics.includes(groupGraphics(l)));
+    if (searchTerm) products = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    if (selectedBrands.length > 0) products = products.filter(p => selectedBrands.includes(p.brand));
+    if (selectedProcessors.length > 0) products = products.filter(p => p.product_variants.some(v => v.processor && selectedProcessors.includes(groupProcessor(v.processor))));
+    if (selectedRams.length > 0) products = products.filter(p => p.product_variants.some(v => v.ram && selectedRams.includes(groupRam(v.ram))));
+    if (selectedStorages.length > 0) products = products.filter(p => p.product_variants.some(v => v.storage && selectedStorages.includes(groupStorage(v.storage))));
+    if (selectedGraphics.length > 0) products = products.filter(p => selectedGraphics.includes(groupGraphics(p.name, p.product_variants)));
     if (selectedPriceRanges.length > 0) {
-      laptops = laptops.filter(l => selectedPriceRanges.some(range => {
-        const [min, max] = range.split('-').map(Number);
-        return l.price >= min && (max ? l.price <= max : true);
+      products = products.filter(p => p.product_variants.some(v => {
+        const priceGroup = groupPrice(v.price);
+        return priceGroup && selectedPriceRanges.includes(priceGroup);
       }));
     }
     if (selectedScreenSizes.length > 0) {
-        laptops = laptops.filter(l => {
-            if (!l.screen_size) return false;
-            const sizeValue = parseFloat(l.screen_size.replace(',', '.').match(/(\d+\.?\d*)/)?.[0] || '');
-            if (isNaN(sizeValue)) return false;
-            return selectedScreenSizes.some(selection => {
-                if (selection === '<12') return sizeValue < 12;
-                if (selection === '12-14') return sizeValue >= 12 && sizeValue <= 14.9;
-                if (selection === '15-16') return sizeValue >= 15 && sizeValue <= 16.9;
-                if (selection === '>16') return sizeValue > 16;
-                return false;
-            });
-        });
+        products = products.filter(p => p.product_variants.some(v => {
+            const sizeGroup = groupScreenSize(v.screen_size);
+            return sizeGroup && selectedScreenSizes.includes(sizeGroup);
+        }));
     }
 
-    if (sortOrder === 'price-asc') laptops.sort((a, b) => a.price - b.price);
-    else if (sortOrder === 'price-desc') laptops.sort((a, b) => b.price - a.price);
+    const getMinPrice = (product: Product) => {
+      if (!product.product_variants || product.product_variants.length === 0) return Infinity;
+      return Math.min(...product.product_variants.map(v => v.price));
+    };
 
-    return laptops;
-  }, [searchTerm, selectedBrands, selectedPriceRanges, selectedScreenSizes, selectedProcessors, selectedRams, selectedStorages, selectedGraphics, sortOrder, allLaptops]);
+    if (sortOrder === 'price-asc') products.sort((a, b) => getMinPrice(a) - getMinPrice(b));
+    else if (sortOrder === 'price-desc') products.sort((a, b) => getMinPrice(b) - getMinPrice(a));
+
+    return products;
+  }, [searchTerm, selectedBrands, selectedPriceRanges, selectedScreenSizes, selectedProcessors, selectedRams, selectedStorages, selectedGraphics, sortOrder, allProducts]);
   
-  const priceRanges = {'0-10000000': 'Di bawah Rp 10 jt','10000000-20000000': 'Rp 10 jt - Rp 20 jt','20000001-Infinity': 'Di atas Rp 20 jt',};
-  const screenSizeRanges = {'<12': 'Kurang dari 12"','12-14': '12" - 14"','15-16': '15" - 16"','>16': 'Lebih dari 16"',};
 
   return (
     <div className="flex flex-col md:flex-row gap-8">
@@ -225,7 +274,8 @@ export default function ProductList({ allLaptops, allBrands }: ProductListProps)
               <span>Reset</span>
             </button>
           </div>
-
+          
+          {/* 5. Render semua filter dropdown dengan prop 'disabled' dihapus */}
           <FilterDropdown title="Brand" icon={<BrandIcon/>} selectionCount={selectedBrands.length}>
             {allBrands.map(({ brand, count }) => (
               <CheckboxItem key={brand} id={brand} label={`${brand} (${count})`} checked={selectedBrands.includes(brand)} onChange={() => handleCheckboxChange(brand, selectedBrands, setSelectedBrands)} />
@@ -233,46 +283,54 @@ export default function ProductList({ allLaptops, allBrands }: ProductListProps)
           </FilterDropdown>
 
           <FilterDropdown title="Processor" icon={<CpuChipIcon/>} selectionCount={selectedProcessors.length}>
-            {filterOptions.processors.map(([group, count]) => (
-              <CheckboxItem key={group} id={group} label={`${group} (${count})`} checked={selectedProcessors.includes(group)} onChange={() => handleCheckboxChange(group, selectedProcessors, setSelectedProcessors)} />
-            ))}
+            {STATIC_PROCESSOR_CATEGORIES.map((group) => {
+                const count = filterCounts.processorCounts.get(group) || 0;
+                return <CheckboxItem key={group} id={group} label={`${group} (${count})`} checked={selectedProcessors.includes(group)} onChange={() => handleCheckboxChange(group, selectedProcessors, setSelectedProcessors)} />
+            })}
           </FilterDropdown>
 
           <FilterDropdown title="Memory (RAM)" icon={<RamIcon/>} selectionCount={selectedRams.length}>
-            {filterOptions.rams.map(([group, count]) => (
-              <CheckboxItem key={group} id={`ram-${group}`} label={`${group} RAM (${count})`} checked={selectedRams.includes(group)} onChange={() => handleCheckboxChange(group, selectedRams, setSelectedRams)} />
-            ))}
+             {STATIC_RAM_CATEGORIES.map((group) => {
+                const count = filterCounts.ramCounts.get(group) || 0;
+                return <CheckboxItem key={group} id={`ram-${group}`} label={`${group} RAM (${count})`} checked={selectedRams.includes(group)} onChange={() => handleCheckboxChange(group, selectedRams, setSelectedRams)} />
+            })}
           </FilterDropdown>
 
           <FilterDropdown title="Storage Drive Size" icon={<StorageIcon/>} selectionCount={selectedStorages.length}>
-            {filterOptions.storages.map(([group, count]) => (
-              <CheckboxItem key={group} id={`storage-${group}`} label={`${group} (${count})`} checked={selectedStorages.includes(group)} onChange={() => handleCheckboxChange(group, selectedStorages, setSelectedStorages)} />
-            ))}
+            {STATIC_STORAGE_CATEGORIES.map((group) => {
+                const count = filterCounts.storageCounts.get(group) || 0;
+                return <CheckboxItem key={group} id={`storage-${group}`} label={`${group} (${count})`} checked={selectedStorages.includes(group)} onChange={() => handleCheckboxChange(group, selectedStorages, setSelectedStorages)} />
+            })}
           </FilterDropdown>
           
           <FilterDropdown title="Graphics" icon={<GraphicsIcon/>} selectionCount={selectedGraphics.length}>
-            {filterOptions.graphics.map(([group, count]) => (
-              <CheckboxItem key={group} id={`graphics-${group}`} label={`${group} (${count})`} checked={selectedGraphics.includes(group)} onChange={() => handleCheckboxChange(group, selectedGraphics, setSelectedGraphics)} />
-            ))}
+            {STATIC_GRAPHICS_CATEGORIES.map((group) => {
+                const count = filterCounts.graphicsCounts.get(group) || 0;
+                return <CheckboxItem key={group} id={`graphics-${group}`} label={`${group} (${count})`} checked={selectedGraphics.includes(group)} onChange={() => handleCheckboxChange(group, selectedGraphics, setSelectedGraphics)} />
+            })}
           </FilterDropdown>
 
           <FilterDropdown title="Harga" icon={<PriceIcon/>} selectionCount={selectedPriceRanges.length}>
-            {Object.entries(priceRanges).map(([range, label]) => (
-                <CheckboxItem key={range} id={range} label={label} checked={selectedPriceRanges.includes(range)} onChange={() => handleCheckboxChange(range, selectedPriceRanges, setSelectedPriceRanges)} />
-            ))}
+            {STATIC_PRICE_RANGES.map((range) => {
+                const count = filterCounts.priceCounts.get(range) || 0;
+                const label = PRICE_RANGE_MAP[range as keyof typeof PRICE_RANGE_MAP];
+                return <CheckboxItem key={range} id={range} label={`${label} (${count})`} checked={selectedPriceRanges.includes(range)} onChange={() => handleCheckboxChange(range, selectedPriceRanges, setSelectedPriceRanges)} />
+            })}
           </FilterDropdown>
 
           <FilterDropdown title="Ukuran Layar" icon={<ScreenSizeIcon/>} selectionCount={selectedScreenSizes.length}>
-            {Object.entries(screenSizeRanges).map(([range, label]) => (
-              <CheckboxItem key={range} id={range} label={label} checked={selectedScreenSizes.includes(range)} onChange={() => handleCheckboxChange(range, selectedScreenSizes, setSelectedScreenSizes)} />
-            ))}
+            {STATIC_SCREEN_SIZES.map((range) => {
+                const count = filterCounts.screenSizeCounts.get(range) || 0;
+                const label = SCREEN_SIZE_MAP[range as keyof typeof SCREEN_SIZE_MAP];
+                return <CheckboxItem key={range} id={range} label={`${label} (${count})`} checked={selectedScreenSizes.includes(range)} onChange={() => handleCheckboxChange(range, selectedScreenSizes, setSelectedScreenSizes)} />
+            })}
           </FilterDropdown>
         </div>
       </aside>
 
       <main className="w-full md:w-3/4 lg:w-4/5">
         <div className="flex justify-between items-center mb-4">
-          <p className="text-sm text-gray-600 dark:text-gray-300">Menampilkan <span className="font-bold">{filteredAndSortedLaptops.length}</span> dari <span className="font-bold">{allLaptops.length}</span> produk</p>
+          <p className="text-sm text-gray-600 dark:text-gray-300">Menampilkan <span className="font-bold">{filteredAndSortedProducts.length}</span> dari <span className="font-bold">{allProducts.length}</span> produk</p>
           <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800">
             <option value="default">Urutan Default</option>
             <option value="price-asc">Harga Terendah</option>
@@ -280,24 +338,30 @@ export default function ProductList({ allLaptops, allBrands }: ProductListProps)
           </select>
         </div>
 
-        {filteredAndSortedLaptops.length > 0 ? (
+        {filteredAndSortedProducts.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredAndSortedLaptops.map((laptop: Laptop) => (
-              <div key={laptop.id} className="group bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 border dark:border-gray-700 flex flex-col">
-                <Link href={`/laptop/${laptop.id}`} className="block relative aspect-video overflow-hidden">
-                  <Image src={laptop.image_url || '/placeholder.png'} alt={laptop.name} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="(max-width: 768px) 50vw, 33vw"/>
-                </Link>
-                <div className="p-5 flex flex-col flex-grow">
-                  <p className="text-gray-500 dark:text-gray-400 text-sm">{laptop.brand}</p>
-                  <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 truncate mt-1 flex-grow">
-                    <Link href={`/laptop/${laptop.id}`} className="hover:text-blue-600 dark:hover:text-blue-400">{laptop.name}</Link>
-                  </h3>
-                  <p className="text-2xl font-extrabold text-blue-700 dark:text-blue-400 mt-4">
-                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(laptop.price)}
-                  </p>
+            {filteredAndSortedProducts.map((product: Product) => {
+              const displayPrice = product.product_variants.length > 0 
+                ? Math.min(...product.product_variants.map(v => v.price)) 
+                : 0;
+
+              return (
+                <div key={product.id} className="group bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 border dark:border-gray-700 flex flex-col">
+                  <Link href={`/laptop/${product.id}`} className="block relative aspect-video overflow-hidden">
+                    <Image src={product.image_url || '/placeholder.png'} alt={product.name} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="(max-width: 768px) 50vw, 33vw"/>
+                  </Link>
+                  <div className="p-5 flex flex-col flex-grow">
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">{product.brand}</p>
+                    <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 truncate mt-1 flex-grow">
+                      <Link href={`/laptop/${product.id}`} className="hover:text-blue-600 dark:hover:text-blue-400">{product.name}</Link>
+                    </h3>
+                    <p className="text-2xl font-extrabold text-blue-700 dark:text-blue-400 mt-4">
+                      {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(displayPrice)}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-lg">

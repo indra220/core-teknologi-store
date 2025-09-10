@@ -1,19 +1,35 @@
 // src/context/CartContext.tsx
-
 'use client';
 
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { useNotification } from '@/components/notifications/NotificationProvider';
-import { Laptop } from '@/types';
+import { Product, ProductVariant } from '@/types';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 
-export interface CartItem extends Laptop { quantity: number; }
+export interface CartItem {
+  productId: string;
+  variantId: string;
+  name: string;
+  brand: string;
+  price: number;
+  imageUrl: string | null;
+  processor: string | null;
+  ram: string | null;
+  storage: string | null;
+  quantity: number;
+}
+
+type CartDataFromServer = {
+  quantity: number;
+  product_variants: (ProductVariant & { products: Product | null }) | null;
+}
+
 interface CartContextType {
   cartItems: CartItem[];
-  addToCart: (product: Laptop, quantity: number) => Promise<void>;
-  removeFromCart: (productId: string) => Promise<void>;
-  updateQuantity: (productId: string, quantity: number) => Promise<void>;
+  addToCart: (product: Product, variant: ProductVariant, quantity: number) => Promise<void>;
+  removeFromCart: (variantId: string) => Promise<void>;
+  updateQuantity: (variantId: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
   cartCount: number;
   loading: boolean;
@@ -36,43 +52,46 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const fetchCartItems = useCallback(async (userId: string) => {
     setLoading(true);
-
-    // --- PERBAIKAN UTAMA DI SINI ---
-    // Query diubah untuk hanya memilih kolom yang diperlukan dari tabel laptops.
-    const { data: cartData, error } = await supabase
+    const { data, error } = await supabase
       .from('cart_items')
       .select(`
-        quantity, 
-        laptops (
-          id, 
-          name, 
-          brand,
-          price, 
-          image_url,
-          processor,
-          ram,
-          storage,
-          screen_size,
-          description,
-          created_at
+        quantity,
+        product_variants (
+          *,
+          products (
+            id, name, brand, image_url
+          )
         )
       `)
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .returns<CartDataFromServer[]>();
 
     if (error) {
       console.error("Error fetching cart:", error);
       setCartItems([]);
-    } else if (cartData) {
-      const formattedCart = cartData
-        .filter(item => item.laptops)
-        .map(item => ({
-          ...(item.laptops as unknown as Laptop),
-          quantity: item.quantity,
-        }));
+    } else if (data) {
+      const formattedCart = data
+        .filter(item => item.product_variants && item.product_variants.products)
+        .map(item => {
+          const variant = item.product_variants!;
+          const product = variant.products!;
+          return {
+            productId: product.id,
+            variantId: variant.id,
+            name: product.name,
+            brand: product.brand,
+            price: variant.price,
+            imageUrl: product.image_url,
+            processor: variant.processor,
+            ram: variant.ram,
+            storage: variant.storage,
+            quantity: item.quantity,
+          };
+        });
       setCartItems(formattedCart);
     }
     setLoading(false);
-  }, [supabase]);
+  }, [supabase]); // <-- PERBAIKAN: Hapus 'showNotification' dari sini
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -87,85 +106,64 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
     return () => subscription.unsubscribe();
   }, [fetchCartItems, supabase]);
-
-  const addToCart = async (product: Laptop, quantity: number) => {
+  
+  const addToCart = async (product: Product, variant: ProductVariant, quantity: number) => {
     if (!user) return;
-
-    const previousCart = [...cartItems];
-    
-    const existingItem = cartItems.find(item => item.id === product.id);
+    const existingItem = cartItems.find(item => item.variantId === variant.id);
     const newQuantity = (existingItem?.quantity || 0) + quantity;
-    
-    let newCartItems: CartItem[];
-    if (existingItem) {
-      newCartItems = cartItems.map(item => item.id === product.id ? { ...item, quantity: newQuantity } : item);
-    } else {
-      newCartItems = [...cartItems, { ...product, quantity: newQuantity }];
+
+    if(newQuantity > variant.stock) {
+        showNotification(`Stok untuk varian ini tidak mencukupi (tersisa ${variant.stock}).`, 'error');
+        return;
     }
-    
-    setCartItems(newCartItems);
     showNotification(`${quantity} "${product.name}" ditambahkan!`, 'success');
 
     const { error } = await supabase.from('cart_items').upsert({
       user_id: user.id,
-      product_id: product.id,
+      variant_id: variant.id, 
       quantity: newQuantity
-    }, { onConflict: 'user_id, product_id' });
+    }, { onConflict: 'user_id, variant_id' });
 
     if (error) {
       showNotification("Gagal menambahkan produk.", "error");
-      setCartItems(previousCart);
+    } else {
+        await fetchCartItems(user.id);
     }
   };
   
-  const removeFromCart = async (productId: string) => {
+  const removeFromCart = async (variantId: string) => {
     if (!user) return;
-    
-    const previousCart = [...cartItems];
-    const newCartItems = cartItems.filter(item => item.id !== productId);
-
-    setCartItems(newCartItems);
-    showNotification('Produk dihapus dari keranjang.', 'info');
-
-    const { error } = await supabase.from('cart_items').delete().match({ user_id: user.id, product_id: productId });
-    
+    setCartItems(prev => prev.filter(item => item.variantId !== variantId));
+    const { error } = await supabase.from('cart_items').delete().match({ user_id: user.id, variant_id: variantId });
     if (error) {
-       showNotification("Gagal menghapus produk.", "error");
-       setCartItems(previousCart);
+      showNotification("Gagal menghapus produk.", "error");
+      await fetchCartItems(user.id);
+    } else {
+      showNotification('Produk dihapus dari keranjang.', 'info');
     }
   };
   
-  const updateQuantity = async (productId: string, quantity: number) => {
+  const updateQuantity = async (variantId: string, quantity: number) => {
     if (!user) return;
     if (quantity < 1) {
-      await removeFromCart(productId);
+      await removeFromCart(variantId);
       return;
     }
-
-    const previousCart = [...cartItems];
-    const newCartItems = cartItems.map(item => item.id === productId ? { ...item, quantity: quantity } : item);
-
-    setCartItems(newCartItems);
-    
-    const { error } = await supabase.from('cart_items').update({ quantity }).match({ user_id: user.id, product_id: productId });
-    
+    setCartItems(prev => prev.map(item => item.variantId === variantId ? { ...item, quantity } : item));
+    const { error } = await supabase.from('cart_items').update({ quantity }).match({ user_id: user.id, variant_id: variantId });
     if (error) {
        showNotification("Gagal memperbarui kuantitas.", "error");
-       setCartItems(previousCart);
+       await fetchCartItems(user.id);
     }
   };
   
   const clearCart = async () => {
-    if (!user) {
-      setCartItems([]);
-      return;
-    }
+    if (!user) return;
+    setCartItems([]);
     const { error } = await supabase.from('cart_items').delete().eq('user_id', user.id);
-    if (!error) {
-      setCartItems([]);
-    } else {
-      console.error("Gagal membersihkan keranjang di database:", error);
+    if (error) {
       showNotification("Gagal membersihkan keranjang.", "error");
+      await fetchCartItems(user.id);
     }
   };
   
