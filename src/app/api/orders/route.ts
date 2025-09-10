@@ -43,11 +43,13 @@ export async function POST(request: Request) {
     // 2. Siapkan dan masukkan data ke 'order_items'
     const orderItemsData = cartItems.map((item: CartItem) => ({
       order_id: newOrder.id,
-      product_id: item.id,
+      // --- PERBAIKAN DI SINI ---
+      product_id: item.productId, // Menggunakan productId, bukan id
+      variant_id: item.variantId, // Tambahkan juga variant_id untuk kelengkapan data
       quantity: item.quantity,
       price: item.price,
       product_name: item.name,
-      product_image_url: item.image_url,
+      product_image_url: item.imageUrl, // Menggunakan imageUrl, bukan image_url
     }));
 
     const { error: itemsError } = await supabase.from('order_items').insert(orderItemsData);
@@ -56,10 +58,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, orderId: newOrder.id }, { status: 200 });
 
-  } catch (error: unknown) { // PERBAIKAN: Ubah 'any' menjadi 'unknown'
+  } catch (error: unknown) {
     console.error("Error creating order:", error);
     
-    // PERBAIKAN: Tambahkan pemeriksaan tipe sebelum mengakses properti
     const errorMessage = error instanceof Error ? error.message : "Terjadi kesalahan yang tidak diketahui.";
     
     return NextResponse.json({ error: "Gagal menyimpan pesanan: " + errorMessage }, { status: 500 });
