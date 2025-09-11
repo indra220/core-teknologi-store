@@ -1,8 +1,7 @@
 // src/components/Header.tsx
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, RefObject } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { User } from '@supabase/supabase-js';
@@ -11,52 +10,130 @@ import { useCart } from '@/context/CartContext';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Laptop } from '@/types';
+import { Product as Laptop } from '@/types';
+import { markNotificationAsRead } from '@/lib/actions/notifications';
+
+// --- Tipe Data ---
+interface ProfileInfo {
+  full_name: string | null;
+  role: string;
+}
+
+interface Notification {
+  id: string;
+  message: string;
+  link: string | null;
+  read_at: string | null;
+  created_at: string;
+}
+
+// Hook untuk mendeteksi klik di luar elemen
+function useOnClickOutside( ref: RefObject<HTMLElement | null>, handler: (event: MouseEvent | TouchEvent) => void) {
+  useEffect(() => {
+    const listener = (event: MouseEvent | TouchEvent) => {
+      if (!ref.current || ref.current.contains(event.target as Node)) return;
+      handler(event);
+    };
+    document.addEventListener('mousedown', listener);
+    document.addEventListener('touchstart', listener);
+    return () => {
+      document.removeEventListener('mousedown', listener);
+      document.removeEventListener('touchstart', listener);
+    };
+  }, [ref, handler]);
+}
 
 const Cart = dynamic(() => import('./Cart'), { 
   ssr: false,
   loading: () => <div className="fixed inset-0 bg-black/60 z-50 flex justify-end items-center pr-4"><p className="text-white">Memuat Keranjang...</p></div>
 });
 
-// --- IKON-IKON ---
-const UserIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-  </svg>
-);
-const CartIcon = () => (
-    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-);
-const SearchIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-    </svg>
-);
-const CloseIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-    </svg>
-);
+const UserIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}> <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /> </svg> );
+const CartIcon = () => ( <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg> );
+const SearchIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}> <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /> </svg> );
+const CloseIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}> <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /> </svg> );
+const BellIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}> <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /> </svg> );
 
-
-interface ProfileInfo {
-  displayName: string | null;
-  isAdmin: boolean;
-}
+const timeAgo = (date: string) => {
+  const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
+  let interval = seconds / 31536000; if (interval > 1) return Math.floor(interval) + " tahun lalu";
+  interval = seconds / 2592000; if (interval > 1) return Math.floor(interval) + " bulan lalu";
+  interval = seconds / 86400; if (interval > 1) return Math.floor(interval) + " hari lalu";
+  interval = seconds / 3600; if (interval > 1) return Math.floor(interval) + " jam lalu";
+  interval = seconds / 60; if (interval > 1) return Math.floor(interval) + " menit lalu";
+  return "Baru saja";
+};
 
 export default function Header() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<ProfileInfo | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false); 
   const [searchQuery, setSearchQuery] = useState('');
   const [allProducts, setAllProducts] = useState<Laptop[]>([]);
   const [suggestedProducts, setSuggestedProducts] = useState<Laptop[]>([]);
+  
   const { cartCount } = useCart();
   const router = useRouter();
   const supabase = createClient();
+  
+  const notificationRef = useRef<HTMLDivElement>(null);
+  const userDropdownRef = useRef<HTMLDivElement>(null);
+
+  useOnClickOutside(notificationRef, () => setIsNotificationOpen(false));
+  useOnClickOutside(userDropdownRef, () => setIsDropdownOpen(false));
+
+  useEffect(() => {
+    const fetchSessionData = async (sessionUser: User | null) => {
+      if (sessionUser) {
+        setUser(sessionUser);
+
+        const { data: profileData } = await supabase.from('profiles').select('full_name, role').eq('id', sessionUser.id).single();
+        setProfile(profileData);
+
+        const { data: notificationData } = await supabase.from('notifications').select('*').eq('user_id', sessionUser.id).order('created_at', { ascending: false });
+        setNotifications(notificationData || []);
+      } else {
+        setUser(null);
+        setProfile(null);
+        setNotifications([]);
+      }
+    };
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      fetchSessionData(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      fetchSessionData(session?.user ?? null);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase, router]);
+
+
+  const handleNotificationClick = async (notification: Notification) => {
+    setIsNotificationOpen(false);
+    const result = await markNotificationAsRead(notification.id);
+
+    if (result.success && result.notifications) {
+      setNotifications(result.notifications);
+    } else {
+      console.error("Gagal menandai notifikasi sebagai terbaca:", result.error);
+    }
+    
+    if (notification.link) {
+      router.push(notification.link);
+    }
+  };
+  
+  const unreadCount = notifications.filter(n => n.read_at === null).length;
   
   useEffect(() => {
     const handleScroll = () => { setIsScrolled(window.scrollY > 10); };
@@ -66,40 +143,10 @@ export default function Header() {
 
   useEffect(() => {
     const fetchAllProducts = async () => {
-        const { data } = await supabase.from('laptops').select('*');
+        const { data } = await supabase.from('products').select(`*, product_variants(*)`).returns<Laptop[]>();
         if (data) setAllProducts(data);
     };
     fetchAllProducts();
-  }, [supabase]);
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-
-      if (user) {
-        const { data: profileData } = await supabase.from('profiles').select('full_name, role').eq('id', user.id).single();
-        setProfile({
-          displayName: profileData?.full_name || user.email || '',
-          isAdmin: profileData?.role === 'admin'
-        });
-      } else {
-        setProfile(null);
-      }
-    };
-
-    fetchUser();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-        if (currentUser) {
-            fetchUser();
-        } else {
-            setProfile(null);
-        }
-    });
-
-    return () => { subscription.unsubscribe(); };
   }, [supabase]);
 
   useEffect(() => {
@@ -115,16 +162,16 @@ export default function Header() {
   }, [searchQuery, allProducts]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
     setIsDropdownOpen(false);
-    router.push('/login?message=logout_success');
-    router.refresh();
+    await supabase.auth.signOut();
+    // PERBAIKAN: Kembalikan ini agar pesan logout muncul
+    router.push('/?message=logout_success');
   };
 
-  const profileLink = profile?.isAdmin ? "/admin" : "/profile";
-  const headerClasses = isScrolled
-    ? 'bg-white shadow-md dark:bg-gray-800 dark:border-b dark:border-gray-700'
-    : 'bg-white shadow-md dark:bg-gray-800 dark:border-b dark:border-gray-700';
+  const displayName = profile?.full_name || user?.email || '';
+  const isAdmin = profile?.role === 'admin';
+  const profileLink = isAdmin ? "/admin" : "/profile";
+  const headerClasses = isScrolled ? 'bg-white shadow-md dark:bg-gray-800 dark:border-b dark:border-gray-700' : 'bg-white shadow-md dark:bg-gray-800 dark:border-b dark:border-gray-700';
   
   return (
     <>
@@ -149,38 +196,56 @@ export default function Header() {
               <>
                 <button onClick={() => setIsCartOpen(true)} className="relative p-2 hover:bg-black/5 rounded-full dark:hover:bg-white/10" aria-label="Buka keranjang">
                   <CartIcon />
-                  {cartCount > 0 && (
-                    <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{cartCount}</span>
-                  )}
+                  {cartCount > 0 && (<span className="absolute top-0 right-0 inline-flex items-center justify-center h-5 w-5 text-xs font-bold text-red-100 bg-red-600 rounded-full">{cartCount}</span>)}
                 </button>
+
                 <div className="relative">
-                  <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="p-2 hover:bg-black/5 rounded-full dark:hover:bg-white/10" aria-label="User Menu">
+                  <button onClick={() => { setIsNotificationOpen(prev => !prev); setIsDropdownOpen(false); }} className="relative p-2 hover:bg-black/5 rounded-full dark:hover:bg-white/10" aria-label="Buka notifikasi" >
+                    <BellIcon />
+                    {unreadCount > 0 && (<span className="absolute top-0 right-0 inline-flex items-center justify-center h-5 w-5 text-xs font-bold text-white bg-red-600 rounded-full">{unreadCount}</span>)}
+                  </button>
+                  <AnimatePresence>
+                    {isNotificationOpen && (
+                      <motion.div ref={notificationRef} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-2xl z-50 border dark:border-gray-700" >
+                        <div className="p-3 font-semibold border-b dark:border-gray-700 text-gray-800 dark:text-gray-100">Notifikasi</div>
+                        <div className="max-h-96 overflow-y-auto">
+                          {notifications.length > 0 ? (
+                            notifications.map(notif => {
+                              const isUnread = notif.read_at === null;
+                              return (
+                                <button key={notif.id} onClick={() => handleNotificationClick(notif)} className="w-full text-left block p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                  <p className={`text-sm ${isUnread ? 'font-bold text-gray-800 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300'}`}>{notif.message}</p>
+                                  <p className={`text-xs mt-1 ${isUnread ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}>{timeAgo(notif.created_at)}</p>
+                                </button>
+                              );
+                            })
+                          ) : (<p className="text-sm text-gray-500 text-center py-10">Tidak ada notifikasi baru.</p>)}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                <div className="relative">
+                  <button onClick={() => { setIsDropdownOpen(prev => !prev); setIsNotificationOpen(false); }} className="p-2 hover:bg-black/5 rounded-full dark:hover:bg-white/10" aria-label="User Menu" >
                     <UserIcon />
                   </button>
-                  {isDropdownOpen && (
-                     <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border dark:border-gray-700">
-                       <div className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400 border-b dark:border-gray-600">
-                         Halo, {profile.displayName}
-                       </div>
-                       <Link href={profileLink} onClick={() => setIsDropdownOpen(false)} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">{profile.isAdmin ? 'Dashboard' : 'Profil Saya'}</Link>
-                       {!profile.isAdmin && (
-                          <Link href="/orders" onClick={() => setIsDropdownOpen(false)} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Pesanan Saya</Link>
-                       )}
-                       <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10">Logout</button>
-                     </div>
-                  )}
+                  <AnimatePresence>
+                    {isDropdownOpen && (
+                       <motion.div ref={userDropdownRef} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border dark:border-gray-700" >
+                         <div className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400 border-b dark:border-gray-600">Halo, {displayName}</div>
+                         <Link href={profileLink} onClick={() => setIsDropdownOpen(false)} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">{isAdmin ? 'Dashboard' : 'Profil Saya'}</Link>
+                         {!isAdmin && (<Link href="/orders" onClick={() => setIsDropdownOpen(false)} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Pesanan Saya</Link>)}
+                         <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10">Logout</button>
+                       </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </>
             ) : (
               <>
-                <button onClick={() => setIsCartOpen(true)} className="relative p-2 hover:bg-black/5 rounded-full dark:hover:bg-white/10" aria-label="Buka keranjang">
-                  <CartIcon />
-                </button>
-                {/* --- PERUBAHAN DI SINI: MENGGANTI LOGIN/REGISTER DENGAN IKON --- */}
-                <Link href="/login" className="p-2 hover:bg-black/5 rounded-full dark:hover:bg-white/10" aria-label="Login atau Register">
-                    <UserIcon />
-                </Link>
-                {/* --- AKHIR PERUBAHAN --- */}
+                <button onClick={() => setIsCartOpen(true)} className="relative p-2 hover:bg-black/5 rounded-full dark:hover:bg-white/10" aria-label="Buka keranjang"><CartIcon /></button>
+                <Link href="/login" className="p-2 hover:bg-black/5 rounded-full dark:hover:bg-white/10" aria-label="Login atau Register"><UserIcon /></Link>
               </>
             )}
           </div>

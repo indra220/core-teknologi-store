@@ -20,7 +20,6 @@ function LoginForm() {
     setError(null);
     setLoading(true);
 
-    // 1. Cari profil berdasarkan username untuk mendapatkan email
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('email')
@@ -33,7 +32,6 @@ function LoginForm() {
       return;
     }
 
-    // 2. Lakukan sign in menggunakan email yang ditemukan
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: profile.email,
       password,
@@ -44,9 +42,9 @@ function LoginForm() {
     if (signInError) {
       setError('Username atau password salah.');
     } else {
-      // Redirect ke halaman utama dengan pesan sukses
+      // PERBAIKAN: Hapus router.refresh() dan cukup arahkan pengguna.
+      // Header akan diperbarui secara otomatis oleh onAuthStateChange.
       router.push('/?message=login_success');
-      router.refresh(); // Memuat ulang state di server untuk header
     }
   };
 

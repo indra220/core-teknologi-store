@@ -5,7 +5,6 @@ import { Order } from "@/types";
 import Link from "next/link";
 import Image from "next/image";
 
-// Fungsi untuk memformat tanggal
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString('id-ID', {
     day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -20,14 +19,13 @@ export default async function MyOrdersPage() {
     redirect('/login');
   }
 
-  // Ambil data pesanan beserta item-itemnya
   const { data: orders, error } = await supabase
     .from('orders')
     .select(`
       *,
       order_items (
         *,
-        laptops (name, image_url)
+        products (name, image_url)
       )
     `)
     .eq('user_id', user.id)
@@ -61,11 +59,10 @@ export default async function MyOrdersPage() {
                 </div>
               </div>
 
-              {/* Daftar Item */}
               <div className="space-y-4 mb-6">
                 {order.order_items.map(item => (
                     <div key={item.id} className="flex items-center">
-                        <Image src={item.product_image_url || '/placeholder.png'} alt={item.product_name} width={64} height={64} className="h-16 w-16 rounded-lg object-cover border"/>
+                        <Image src={item.products?.image_url || '/placeholder.png'} alt={item.product_name} width={64} height={64} className="h-16 w-16 rounded-lg object-cover border"/>
                         <div className="ml-4 flex-grow">
                             <p className="font-semibold text-gray-800">{item.product_name}</p>
                             <p className="text-sm text-gray-600">{item.quantity} x {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.price)}</p>
@@ -74,7 +71,6 @@ export default async function MyOrdersPage() {
                 ))}
               </div>
 
-              {/* Info Pengiriman */}
               {order.shipping_address && (
                 <div className="border-t pt-4">
                     <h3 className="font-semibold text-gray-700">Alamat Pengiriman</h3>

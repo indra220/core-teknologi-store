@@ -1,6 +1,5 @@
 // src/types.ts
 
-// Tipe data lama (bisa dihapus jika tidak ada halaman lain yang masih menggunakannya)
 export interface Laptop {
   id: string;
   name: string;
@@ -14,8 +13,6 @@ export interface Laptop {
   description: string | null;
   created_at: string;
 }
-
-// --- TIPE DATA BARU UNTUK PRODUK & VARIAN ---
 
 export interface ProductVariant {
   id: string;
@@ -36,10 +33,8 @@ export interface Product {
   description: string | null;
   image_url: string | null;
   created_at: string;
-  // Relasi untuk menyertakan semua varian dari produk ini
   product_variants: ProductVariant[];
 }
-
 
 export interface Profile {
   id: string;
@@ -53,10 +48,15 @@ export interface Profile {
 
 export interface ShippingAddress {
   address_line_1: string;
-  admin_area_2: string; // City
-  admin_area_1: string; // State/Province
+  admin_area_2: string;
+  admin_area_1: string;
   postal_code: string;
   country_code: string;
+}
+
+export interface ProductInfo {
+  name: string;
+  image_url: string | null;
 }
 
 export interface OrderItem {
@@ -64,8 +64,9 @@ export interface OrderItem {
   quantity: number;
   price: number;
   product_name: string;
-  product_image_url: string;
-  laptops: Laptop; // Untuk relasi data
+  product_image_url: string | null;
+  // PERBAIKAN: Ubah relasi dari 'laptops' ke 'products'
+  products: ProductInfo | null;
 }
 
 export interface Order {

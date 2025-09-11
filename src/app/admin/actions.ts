@@ -5,10 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { Order } from "@/types";
 
-// Definisikan tipe data spesifik untuk pesanan terbaru
 type RecentOrder = Pick<Order, 'id' | 'created_at' | 'total_amount' | 'profiles'>;
 
-// Definisikan tipe data untuk nilai kembalian fungsi
 interface DashboardStats {
   todayRevenue: number;
   todayOrders: number;
@@ -18,9 +16,6 @@ interface DashboardStats {
   totalProducts: number;
 }
 
-/**
- * Mengambil statistik penting untuk ditampilkan di dashboard admin.
- */
 export async function getDashboardStats(): Promise<DashboardStats> {
   const supabase = await createClient();
   const today = new Date();
@@ -34,13 +29,12 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     .select('total_amount')
     .gte('created_at', today.toISOString());
 
-  // Kunci perbaikan ada di sini dengan `.returns<RecentOrder[]>()`
   const { data: recentOrdersData } = await supabase
     .from('orders')
     .select('id, created_at, total_amount, profiles ( username )')
     .order('created_at', { ascending: false })
     .limit(5)
-    .returns<RecentOrder[]>(); // Ini memberitahu TypeScript bentuk data yang benar
+    .returns<RecentOrder[]>();
 
   const { count: newUsersCount } = await supabase
     .from('profiles')
@@ -51,8 +45,9 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     .from('profiles')
     .select('*', { count: 'exact', head: true });
 
+  // PERBAIKAN: Ubah 'laptops' menjadi 'products'
   const { count: totalProducts } = await supabase
-    .from('laptops')
+    .from('products')
     .select('*', { count: 'exact', head: true });
 
   const todayRevenue = todayOrdersData?.reduce((sum, order) => sum + order.total_amount, 0) || 0;
@@ -67,10 +62,6 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   };
 }
 
-
-/**
- * Menghapus produk beserta gambarnya dari storage.
- */
 export async function deleteProduct(productId: string, imageUrl: string | null) {
   const supabase = await createClient();
 
@@ -80,8 +71,9 @@ export async function deleteProduct(productId: string, imageUrl: string | null) 
       await supabase.storage.from('product-images').remove([fileName]);
     }
   }
-
-  const { error } = await supabase.from('laptops').delete().eq('id', productId);
+  
+  // PERBAIKAN: Ubah 'laptops' menjadi 'products'
+  const { error } = await supabase.from('products').delete().eq('id', productId);
 
   if (error) {
     return { success: false, message: "Gagal menghapus produk." };
