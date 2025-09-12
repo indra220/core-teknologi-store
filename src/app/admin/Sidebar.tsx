@@ -3,10 +3,21 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { HomeIcon, ShoppingBagIcon, UsersIcon, ChartBarIcon, ArrowLeftOnRectangleIcon, ArrowUpRightIcon } from '@heroicons/react/24/outline';
+// --- 1. Impor Ikon Baru ---
+import { 
+    HomeIcon, 
+    ShoppingBagIcon, 
+    UsersIcon, 
+    ChartBarIcon, 
+    ArrowLeftOnRectangleIcon, 
+    ArrowUpRightIcon, 
+    InboxStackIcon // <-- Ikon baru
+} from '@heroicons/react/24/outline';
 
 const navLinks = [
   { href: '/admin', label: 'Dashboard', icon: HomeIcon },
+  // --- 2. Tambahkan Tautan Menu Baru ---
+  { href: '/admin/orders', label: 'Manajemen Pesanan', icon: InboxStackIcon },
   { href: '/admin/products', label: 'Manajemen Produk', icon: ShoppingBagIcon },
   { href: '/admin/users', label: 'Manajemen Pengguna', icon: UsersIcon },
   { href: '/admin/report', label: 'Laporan & Statistik', icon: ChartBarIcon },
@@ -15,10 +26,12 @@ const navLinks = [
 export default function Sidebar() {
   const pathname = usePathname();
 
-  // Logika untuk menentukan link produk aktif
   const isProductsActive = pathname === '/admin/products' || 
                            pathname.startsWith('/admin/products/add') || 
                            pathname.startsWith('/admin/products/') && pathname.endsWith('/edit');
+  
+  // --- 3. Tambahkan Logika untuk Status Aktif Tautan Pesanan ---
+  const isOrdersActive = pathname === '/admin/orders';
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col z-40">
@@ -32,8 +45,10 @@ export default function Sidebar() {
       <nav className="flex-grow p-4 space-y-2">
         {navLinks.map((link) => {
           const Icon = link.icon;
-          // Cek kondisi aktif
-          const isActive = link.href === '/admin/products' ? isProductsActive : pathname === link.href;
+          // --- 4. Perbarui Logika untuk Menentukan Tautan Aktif ---
+          let isActive = pathname === link.href;
+          if (link.href === '/admin/products') isActive = isProductsActive;
+          if (link.href === '/admin/orders') isActive = isOrdersActive;
 
           return (
             <Link

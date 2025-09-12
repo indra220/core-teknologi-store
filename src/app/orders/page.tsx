@@ -1,10 +1,11 @@
 // src/app/orders/page.tsx
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { Order, OrderStatus } from "@/types"; // Impor tipe data baru
+import { Order, OrderStatus } from "@/types";
 import Link from "next/link";
 import Image from "next/image";
-import CancelOrderButton from "./CancelOrderButton"; // Impor komponen tombol baru
+import CancelOrderButton from "./CancelOrderButton";
+import ConfirmDeliveryButton from "./ConfirmDeliveryButton";
 
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString('id-ID', {
@@ -12,7 +13,6 @@ const formatDate = (dateString: string) => {
   });
 };
 
-// Fungsi baru untuk mendapatkan warna badge status
 const getStatusBadgeColor = (status: OrderStatus) => {
   switch (status) {
     case 'Menunggu Konfirmasi': return 'bg-yellow-100 text-yellow-800';
@@ -34,13 +34,7 @@ export default async function MyOrdersPage() {
 
   const { data: orders, error } = await supabase
     .from('orders')
-    .select(`
-      *,
-      order_items (
-        *,
-        products (name, image_url)
-      )
-    `)
+    .select(`*, order_items (*, products (name, image_url))`)
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
@@ -68,13 +62,12 @@ export default async function MyOrdersPage() {
                     <p className="font-semibold text-gray-900 text-lg">
                       {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(order.total_amount)}
                     </p>
-                    {/* Badge status dengan warna dinamis */}
                     <span className={`px-3 py-1 text-xs font-bold rounded-full ${getStatusBadgeColor(order.status)}`}>
                       {order.status}
                     </span>
                 </div>
               </div>
-
+              
               <div className="space-y-4 mb-6">
                 {order.order_items.map(item => (
                     <div key={item.id} className="flex items-center">
@@ -87,7 +80,6 @@ export default async function MyOrdersPage() {
                 ))}
               </div>
 
-              {/* Bagian Aksi (Tombol) */}
               <div className="flex flex-col sm:flex-row justify-between items-center border-t pt-4">
                 {order.shipping_address ? (
                   <div>
@@ -100,10 +92,14 @@ export default async function MyOrdersPage() {
                   </div>
                 ) : <div />}
                 
-                {/* Tampilkan tombol hanya jika status memungkinkan */}
-                {order.status === 'Menunggu Konfirmasi' && (
-                  <CancelOrderButton orderId={order.id} />
-                )}
+                <div className="flex items-center gap-4 mt-4 sm:mt-0">
+                    {order.status === 'Menunggu Konfirmasi' && (
+                      <CancelOrderButton orderId={order.id} />
+                    )}
+                    {order.status === 'Dalam Pengiriman' && (
+                      <ConfirmDeliveryButton orderId={order.id} />
+                    )}
+                </div>
               </div>
             </div>
           ))}

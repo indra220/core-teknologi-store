@@ -8,9 +8,11 @@ export const revalidate = 0;
 export default async function AdminReportPage() {
   const supabase = await createClient();
 
+  // --- Kueri diperbarui untuk hanya mengambil pesanan 'Selesai' ---
   const { data: orders, error: ordersError } = await supabase
     .from('orders')
     .select(`*, profiles ( username ), order_items ( * )`)
+    .eq('status', 'Selesai') // <-- FILTER DI SINI
     .order('created_at', { ascending: false });
 
   const { data: laptops, error: laptopsError } = await supabase
@@ -25,7 +27,7 @@ export default async function AdminReportPage() {
     <div className="space-y-8">
       <header>
         <h1 className="text-3xl font-extrabold text-gray-900 dark:text-gray-50 tracking-tight sm:text-4xl">Laporan & Statistik</h1>
-        <p className="mt-2 text-lg text-gray-600 dark:text-gray-300">Ringkasan data, visualisasi, dan riwayat transaksi.</p>
+        <p className="mt-2 text-lg text-gray-600 dark:text-gray-300">Ringkasan data, visualisasi, dan riwayat transaksi yang sudah selesai.</p>
       </header>
       
       <ReportClientComponent 

@@ -1,4 +1,4 @@
-// lib/supabase/server.ts
+// src/lib/supabase/server.ts
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
@@ -16,17 +16,15 @@ export async function createClient() {
         set(name: string, value: string, options: CookieOptions) {
           try {
             cookieStore.set({ name, value, ...options })
-          } catch { // <-- Variabel (error) dihapus
+          } catch (_error) { // <-- Diubah dari 'error' menjadi '_error'
             // Ini bisa diabaikan jika Anda menggunakan middleware
-            // untuk me-refresh sesi pengguna.
           }
         },
         remove(name: string, options: CookieOptions) {
           try {
             cookieStore.set({ name, value: '', ...options })
-          } catch { // <-- Variabel (error) dihapus
+          } catch (_error) { // <-- Diubah dari 'error' menjadi '_error'
             // Ini bisa diabaikan jika Anda menggunakan middleware
-            // untuk me-refresh sesi pengguna.
           }
         },
       },
