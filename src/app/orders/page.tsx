@@ -1,14 +1,27 @@
 // src/app/orders/page.tsx
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { Order } from "@/types";
+import { Order, OrderStatus } from "@/types"; // Impor tipe data baru
 import Link from "next/link";
 import Image from "next/image";
+import CancelOrderButton from "./CancelOrderButton"; // Impor komponen tombol baru
 
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString('id-ID', {
     day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
   });
+};
+
+// Fungsi baru untuk mendapatkan warna badge status
+const getStatusBadgeColor = (status: OrderStatus) => {
+  switch (status) {
+    case 'Menunggu Konfirmasi': return 'bg-yellow-100 text-yellow-800';
+    case 'Diproses': return 'bg-blue-100 text-blue-800';
+    case 'Dalam Pengiriman': return 'bg-cyan-100 text-cyan-800';
+    case 'Selesai': return 'bg-green-100 text-green-800';
+    case 'Dibatalkan': return 'bg-red-100 text-red-800';
+    default: return 'bg-gray-100 text-gray-800';
+  }
 };
 
 export default async function MyOrdersPage() {
@@ -55,7 +68,10 @@ export default async function MyOrdersPage() {
                     <p className="font-semibold text-gray-900 text-lg">
                       {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(order.total_amount)}
                     </p>
-                    <span className="px-3 py-1 text-xs font-bold rounded-full bg-yellow-100 text-yellow-800">{order.status}</span>
+                    {/* Badge status dengan warna dinamis */}
+                    <span className={`px-3 py-1 text-xs font-bold rounded-full ${getStatusBadgeColor(order.status)}`}>
+                      {order.status}
+                    </span>
                 </div>
               </div>
 
@@ -71,16 +87,24 @@ export default async function MyOrdersPage() {
                 ))}
               </div>
 
-              {order.shipping_address && (
-                <div className="border-t pt-4">
-                    <h3 className="font-semibold text-gray-700">Alamat Pengiriman</h3>
-                    <address className="text-sm text-gray-600 not-italic mt-1">
-                        {order.shipping_address.address_line_1}<br/>
-                        {order.shipping_address.admin_area_2}, {order.shipping_address.admin_area_1} {order.shipping_address.postal_code}<br/>
-                        {order.shipping_address.country_code}
-                    </address>
-                </div>
-              )}
+              {/* Bagian Aksi (Tombol) */}
+              <div className="flex flex-col sm:flex-row justify-between items-center border-t pt-4">
+                {order.shipping_address ? (
+                  <div>
+                      <h3 className="font-semibold text-gray-700">Alamat Pengiriman</h3>
+                      <address className="text-sm text-gray-600 not-italic mt-1">
+                          {order.shipping_address.address_line_1}<br/>
+                          {order.shipping_address.admin_area_2}, {order.shipping_address.admin_area_1} {order.shipping_address.postal_code}<br/>
+                          {order.shipping_address.country_code}
+                      </address>
+                  </div>
+                ) : <div />}
+                
+                {/* Tampilkan tombol hanya jika status memungkinkan */}
+                {order.status === 'Menunggu Konfirmasi' && (
+                  <CancelOrderButton orderId={order.id} />
+                )}
+              </div>
             </div>
           ))}
         </div>

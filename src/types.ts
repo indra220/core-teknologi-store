@@ -65,15 +65,17 @@ export interface OrderItem {
   price: number;
   product_name: string;
   product_image_url: string | null;
-  // PERBAIKAN: Ubah relasi dari 'laptops' ke 'products'
   products: ProductInfo | null;
 }
+
+// Tipe data baru untuk status pesanan yang lebih spesifik
+export type OrderStatus = 'Menunggu Konfirmasi' | 'Diproses' | 'Dalam Pengiriman' | 'Selesai' | 'Dibatalkan';
 
 export interface Order {
   id: string;
   created_at: string;
   total_amount: number;
-  status: string;
+  status: OrderStatus; // Menggunakan tipe data OrderStatus yang baru
   paypal_order_id: string;
   shipping_address: ShippingAddress;
   order_items: OrderItem[];
