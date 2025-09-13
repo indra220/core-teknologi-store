@@ -35,24 +35,26 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
     return { success: false, message: `Pesanan dengan status "${order.status}" tidak dapat dibatalkan.` };
   }
 
-  const { error: rpcError } = await supabase.rpc('cancel_order_and_restore_stock', {
+  // Panggil fungsi RPC baru untuk membatalkan DAN refund
+  const { error: rpcError } = await supabase.rpc('cancel_order_and_refund_to_wallet', {
     order_id_to_cancel: orderId,
     new_status: 'Dibatalkan'
   });
 
   if (rpcError) {
     console.error('RPC Error saat membatalkan pesanan:', rpcError);
-    return { success: false, message: "Gagal membatalkan pesanan. Silakan coba lagi." };
+    return { success: false, message: "Gagal membatalkan pesanan dan mengembalikan dana. Silakan coba lagi." };
   }
   
   await supabase.from('notifications').insert({
       user_id: user.id,
-      message: `Pesanan Anda #${orderId.substring(0, 8)} telah berhasil dibatalkan.`,
+      message: `Pesanan Anda #${orderId.substring(0, 8)} telah dibatalkan. Dana telah dikembalikan ke dompet Anda.`,
       link: '/orders',
   });
 
   revalidatePath('/orders');
-  return { success: true, message: "Pesanan berhasil dibatalkan." };
+  revalidatePath('/', 'layout'); // Revalidate layout untuk update saldo di header
+  return { success: true, message: "Pesanan berhasil dibatalkan. Saldo telah masuk ke dompet Anda." };
 }
 
 export async function confirmOrderReceived(orderId: string): Promise<ActionResult> {

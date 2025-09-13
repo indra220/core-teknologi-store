@@ -1,3 +1,4 @@
+// src/components/PageTransition.tsx
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
@@ -35,7 +36,8 @@ const PageTransition = ({ children, variant = 'fadeInUp' }: PageTransitionProps)
   const pathname = usePathname();
 
   return (
-    <AnimatePresence mode="wait">
+    // PERBAIKAN: Ganti mode="wait" menjadi mode="popLayout" untuk transisi yang lebih baik
+    <AnimatePresence mode="popLayout">
       <motion.div
         key={pathname}
         variants={animationVariants[variant]}

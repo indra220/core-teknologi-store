@@ -6,31 +6,32 @@ import { useNotification } from '@/components/notifications/NotificationProvider
 import { cancelOrder } from './actions';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { useSession } from '@/context/SessionContext'; // <-- IMPOR useSession
 
 export default function CancelOrderButton({ orderId }: { orderId: string }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const { showNotification } = useNotification();
+  const { refreshSession } = useSession(); // <-- AMBIL FUNGSI REFRESH
 
   const handleConfirmCancel = async () => {
     setIsCancelling(true);
     const result = await cancelOrder(orderId);
     
-    // Tidak perlu set isCancelling ke false di sini karena modal akan tertutup
-    // dan notifikasi akan muncul setelahnya.
-    
     if (result.success) {
+      await refreshSession(); // <-- REFRESH DATA SETELAH SUKSES
       showNotification(result.message, 'success');
     } else {
       showNotification(result.message, 'error');
     }
-    // Tutup modal setelah proses selesai
     setIsModalOpen(false);
+    // Kita set isCancelling kembali ke false setelah modal ditutup dan notif muncul
+    // agar tombol bisa diklik lagi jika ada error.
+    setIsCancelling(false);
   };
 
   return (
     <>
-      {/* Tombol utama untuk memicu modal */}
       <button
         onClick={() => setIsModalOpen(true)}
         className="mt-4 sm:mt-0 w-full sm:w-auto px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 disabled:bg-red-400 transition"
@@ -38,7 +39,6 @@ export default function CancelOrderButton({ orderId }: { orderId: string }) {
         Batalkan Pesanan
       </button>
 
-      {/* Komponen Modal dengan Animasi */}
       <AnimatePresence>
         {isModalOpen && (
           <motion.div
@@ -54,7 +54,7 @@ export default function CancelOrderButton({ orderId }: { orderId: string }) {
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
               transition={{ duration: 0.2 }}
               className="relative bg-white dark:bg-gray-800 w-full max-w-md p-6 rounded-2xl shadow-xl border dark:border-gray-700"
-              onClick={(e) => e.stopPropagation()} // Mencegah modal tertutup saat diklik di dalam area konten
+              onClick={(e) => e.stopPropagation()}
             >
               <div className="flex flex-col items-center text-center">
                 <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/50 sm:mx-0 sm:h-10 sm:w-10">

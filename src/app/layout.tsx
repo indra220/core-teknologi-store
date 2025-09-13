@@ -7,10 +7,11 @@ import "@/styles/nprogress.css";
 import Header from "@/components/Header";
 import { NotificationProvider } from "@/components/notifications/NotificationProvider";
 import { CartProvider } from "@/context/CartContext";
-import TopLoader from "@/components/TopLoader";
 import { Suspense, ReactNode } from "react";
 import { PayPalProvider } from "@/context/PayPalProvider";
 import StatusNotifier from "@/components/notifications/StatusNotifier";
+import { SessionProvider } from "@/context/SessionContext";
+import TopLoader from "@/components/TopLoader"; // <-- Cukup impor TopLoader
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -34,7 +35,8 @@ export default function RootLayout({ children }: { children: ReactNode; }) {
     <html lang="en" className={`${inter.variable} ${jakarta.variable}`}>
       <body className={`font-sans`}>
         <Suspense fallback={null}>
-          <TopLoader />
+            {/* Suspense dibutuhkan karena TopLoader menggunakan hooks seperti usePathname */}
+            <TopLoader />
         </Suspense>
         
         <NotificationProvider>
@@ -42,13 +44,14 @@ export default function RootLayout({ children }: { children: ReactNode; }) {
             <StatusNotifier />
           </Suspense>
           <PayPalProvider>
-            <CartProvider>
-              {/* Header sekarang tidak lagi menerima props data awal */}
-              <Header />
-              <main className="container mx-auto p-4 sm:p-6 lg:px-8">
-                {children}
-              </main>
-            </CartProvider>
+            <SessionProvider>
+              <CartProvider>
+                <Header />
+                <main className="container mx-auto p-4 sm:p-6 lg:px-8">
+                  {children}
+                </main>
+              </CartProvider>
+            </SessionProvider>
           </PayPalProvider>
         </NotificationProvider>
       </body>

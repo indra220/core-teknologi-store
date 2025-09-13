@@ -44,6 +44,7 @@ export interface Profile {
   avatar_url: string | null;
   role: string;
   email: string | null;
+  wallet_balance: number;
 }
 
 export interface ShippingAddress {
@@ -81,7 +82,8 @@ export interface Order {
   order_items: OrderItem[];
   profiles: { 
     username: string;
-    full_name: string | null; // <-- TAMBAHKAN INI
-    email: string | null;     // <-- TAMBAHKAN INI
+    full_name: string | null;
+    email: string | null;
   } | null;
+  payment_method: 'paypal' | 'wallet'; // <-- TAMBAHKAN INI
 }

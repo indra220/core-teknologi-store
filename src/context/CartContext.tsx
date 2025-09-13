@@ -31,6 +31,7 @@ interface CartContextType {
   removeFromCart: (variantId: string) => Promise<void>;
   updateQuantity: (variantId: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
+  clearClientCart: () => void; // <-- TAMBAHKAN FUNGSI BARU INI
   cartCount: number;
   loading: boolean;
 }
@@ -91,7 +92,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setCartItems(formattedCart);
     }
     setLoading(false);
-  }, [supabase]); // <-- PERBAIKAN: Hapus 'showNotification' dari sini
+  }, [supabase]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -166,11 +167,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
       await fetchCartItems(user.id);
     }
   };
+
+  // <-- IMPLEMENTASI FUNGSI BARU
+  const clearClientCart = () => {
+    setCartItems([]);
+  };
   
   const cartCount = cartItems.reduce((count, item) => count + item.quantity, 0);
 
   return (
-    <CartContext.Provider value={{ cartItems, addToCart, removeFromCart, updateQuantity, clearCart, cartCount, loading }}>
+    <CartContext.Provider value={{ cartItems, addToCart, removeFromCart, updateQuantity, clearCart, clearClientCart, cartCount, loading }}>
       {children}
     </CartContext.Provider>
   );
