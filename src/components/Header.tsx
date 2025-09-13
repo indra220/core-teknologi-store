@@ -11,7 +11,9 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Product as Laptop } from '@/types';
-import { markNotificationAsRead } from '@/lib/actions/notifications';
+// --- 1. IMPOR FUNGSI BARU ---
+import { markNotificationAsRead, deleteNotification } from '@/lib/actions/notifications';
+import { useNotification } from './notifications/NotificationProvider'; // Impor useNotification
 
 // --- Tipe Data ---
 interface ProfileInfo {
@@ -27,7 +29,7 @@ interface Notification {
   created_at: string;
 }
 
-// Hook untuk mendeteksi klik di luar elemen
+// Hook
 function useOnClickOutside( ref: RefObject<HTMLElement | null>, handler: (event: MouseEvent | TouchEvent) => void) {
   useEffect(() => {
     const listener = (event: MouseEvent | TouchEvent) => {
@@ -48,11 +50,15 @@ const Cart = dynamic(() => import('./Cart'), {
   loading: () => <div className="fixed inset-0 bg-black/60 z-50 flex justify-end items-center pr-4"><p className="text-white">Memuat Keranjang...</p></div>
 });
 
+// Ikon-ikon
 const UserIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}> <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /> </svg> );
 const CartIcon = () => ( <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg> );
 const SearchIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}> <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /> </svg> );
 const CloseIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}> <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /> </svg> );
 const BellIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}> <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /> </svg> );
+// --- 2. Tambahkan Ikon 'X' Kecil untuk Tombol Hapus ---
+const CloseIconSmall = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>;
+
 
 const timeAgo = (date: string) => {
   const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
@@ -78,6 +84,7 @@ export default function Header() {
   const [suggestedProducts, setSuggestedProducts] = useState<Laptop[]>([]);
   
   const { cartCount } = useCart();
+  const { showNotification } = useNotification();
   const router = useRouter();
   const supabase = createClient();
   
@@ -132,6 +139,26 @@ export default function Header() {
       router.push(notification.link);
     }
   };
+
+  // --- 3. BUAT FUNGSI BARU UNTUK MENANGANI PENGHAPUSAN ---
+  const handleDeleteNotification = async (e: React.MouseEvent, notificationId: string) => {
+    e.stopPropagation(); // Mencegah navigasi saat tombol hapus diklik
+
+    // Optimistic UI Update: hapus notifikasi dari state secara langsung
+    setNotifications(prevNotifications => prevNotifications.filter(n => n.id !== notificationId));
+
+    // Panggil server action
+    const result = await deleteNotification(notificationId);
+    
+    // Jika gagal, tampilkan error dan sinkronkan kembali state dengan server
+    if (!result.success) {
+        showNotification(result.error || "Gagal menghapus notifikasi", "error");
+        // Update state dengan data terbaru dari server untuk memastikan konsistensi
+        if(result.notifications) {
+          setNotifications(result.notifications);
+        }
+    }
+  };
   
   const unreadCount = notifications.filter(n => n.read_at === null).length;
   
@@ -164,7 +191,6 @@ export default function Header() {
   const handleLogout = async () => {
     setIsDropdownOpen(false);
     await supabase.auth.signOut();
-    // PERBAIKAN: Kembalikan ini agar pesan logout muncul
     router.push('/?message=logout_success');
   };
 
@@ -213,10 +239,20 @@ export default function Header() {
                             notifications.map(notif => {
                               const isUnread = notif.read_at === null;
                               return (
-                                <button key={notif.id} onClick={() => handleNotificationClick(notif)} className="w-full text-left block p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                  <p className={`text-sm ${isUnread ? 'font-bold text-gray-800 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300'}`}>{notif.message}</p>
-                                  <p className={`text-xs mt-1 ${isUnread ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}>{timeAgo(notif.created_at)}</p>
-                                </button>
+                                // --- 4. PERBARUI STRUKTUR JSX NOTIFIKASI ---
+                                <div key={notif.id} className="relative group w-full border-b dark:border-gray-700 last:border-b-0">
+                                  <button onClick={() => handleNotificationClick(notif)} className="w-full text-left block p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                    <p className={`text-sm pr-6 ${isUnread ? 'font-bold text-gray-800 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300'}`}>{notif.message}</p>
+                                    <p className={`text-xs mt-1 ${isUnread ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}>{timeAgo(notif.created_at)}</p>
+                                  </button>
+                                  <button
+                                    onClick={(e) => handleDeleteNotification(e, notif.id)}
+                                    className="absolute top-1/2 right-2 -translate-y-1/2 p-1 rounded-full text-gray-400 dark:text-gray-500 hover:bg-red-100 dark:hover:bg-red-900/50 hover:text-red-600 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                                    title="Hapus notifikasi"
+                                  >
+                                    <CloseIconSmall />
+                                  </button>
+                                </div>
                               );
                             })
                           ) : (<p className="text-sm text-gray-500 text-center py-10">Tidak ada notifikasi baru.</p>)}
