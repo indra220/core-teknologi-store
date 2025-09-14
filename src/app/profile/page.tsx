@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { updateProfile, resendVerificationEmail } from './actions';
 import { Profile } from '@/types';
 import type { User } from '@supabase/supabase-js';
+import NProgress from 'nprogress'; // Impor NProgress
 
 // Komponen Tombol Submit untuk form utama
 function SubmitButton() {
@@ -35,17 +36,22 @@ export default function ProfilePage() {
   const [formState, formAction] = useActionState(updateProfile, initialState);
   const [resendState, resendAction] = useActionState(resendVerificationEmail, initialState);
 
+  // useEffect untuk menangani hasil dari server action
   useEffect(() => {
+    if (formState.type === 'success' || formState.type === 'error' || resendState.type === 'success' || resendState.type === 'error') {
+        NProgress.done(); // Hentikan TopLoader setelah aksi selesai
+    }
+    
     if (formState.type === 'success') {
       const timer = setTimeout(() => {
         setIsEditing(false);
         setCurrentPassword('');
-        if(formState.message) formState.message = null; 
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [formState]);
+  }, [formState, resendState]);
 
+  // useEffect untuk mengambil data pengguna awal
   useEffect(() => {
     const supabase = createBrowserClient();
     
@@ -66,14 +72,14 @@ export default function ProfilePage() {
       setUser(user);
       setProfile(profileData);
 
-      if (profileData?.role === 'admin' && !window.location.pathname.startsWith('/admin')) {
+      if (profileData?.role === 'admin') {
         router.push('/admin');
       }
     };
 
     fetchAndSetUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, _session) => { // PERBAIKAN: Tambahkan underscore pada parameter 'session'
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, _session) => {
       if (event === 'USER_UPDATED') {
         await fetchAndSetUser();
       }
@@ -101,7 +107,7 @@ export default function ProfilePage() {
         <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 px-4 py-3 rounded-lg relative mb-8 text-sm" role="alert">
           <strong className="font-semibold">Verifikasi Email!</strong>
           <span className="block sm:inline ml-2">Satu langkah lagi! Konfirmasi perubahan email Anda ke <span className="font-bold">{user.new_email}</span>.</span>
-          <form action={resendAction} className="inline-block ml-2">
+          <form action={resendAction} className="inline-block ml-2" onSubmit={() => NProgress.start()}>
             <button type="submit" className="underline font-bold hover:text-yellow-900">(Kirim Ulang)</button>
           </form>
           {resendState.message && <p className="mt-2 text-xs font-bold">{resendState.message}</p>}
@@ -111,7 +117,7 @@ export default function ProfilePage() {
       {isEditing ? (
         <div className="bg-white p-8 sm:p-10 rounded-2xl shadow-xl border border-gray-100">
           <h2 className="text-2xl font-bold text-gray-800 mb-8">Edit Informasi Akun</h2>
-          <form action={formAction} className="space-y-6">
+          <form action={formAction} className="space-y-6" onSubmit={() => NProgress.start()}>
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">Username</label>
               <input id="username" type="text" name="username" defaultValue={profile.username} className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500" />
@@ -119,7 +125,7 @@ export default function ProfilePage() {
             
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input id="email" type="email" name="email" defaultValue={user.email} className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500" />
+              <input id="email" type="email" name="email" defaultValue={user.email!} className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500" />
             </div>
             
             <div>

@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useRef, RefObject } from 'react';
-import Link from 'next/link'; // <-- Kembalikan ke Link standar
+import Link from '@/components/NavigationLoader';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useCart } from '@/context/CartContext';
@@ -12,8 +12,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Product as Laptop } from '@/types';
 import { markNotificationAsRead, deleteNotification } from '@/lib/actions/notifications';
 import { useSession } from '@/context/SessionContext';
+import NProgress from 'nprogress';
 
-// ... (sisa kode seperti ikon dan tipe data tidak berubah)
+// ... (Kode Ikon dan hook useOnClickOutside tidak berubah) ...
+// ... (Saya persingkat untuk kejelasan, kode aslinya tetap sama) ...
 interface Notification {
   id: string;
   message: string;
@@ -56,9 +58,8 @@ const timeAgo = (date: string) => {
   return "Baru saja";
 };
 
-
 export default function Header() {
-  const { user, profile, notifications, refreshSession } = useSession();
+    const { user, profile, notifications, refreshSession } = useSession();
   
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -66,8 +67,8 @@ export default function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false); 
   const [searchQuery, setSearchQuery] = useState('');
-  const [allProducts, setAllProducts] = useState<Laptop[]>([]);
   const [suggestedProducts, setSuggestedProducts] = useState<Laptop[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   
   const { cartCount } = useCart();
   const router = useRouter();
@@ -81,12 +82,14 @@ export default function Header() {
 
   const handleNotificationClick = async (notification: Notification) => {
     setIsNotificationOpen(false);
-    await markNotificationAsRead(notification.id);
-    await refreshSession();
     
     if (notification.link) {
-      router.push(notification.link); // Tidak perlu startNavigationProgress lagi
+        NProgress.start(); 
+        router.push(notification.link);
     }
+    
+    await markNotificationAsRead(notification.id);
+    await refreshSession();
   };
 
   const handleDeleteNotification = async (e: React.MouseEvent, notificationId: string) => {
@@ -104,61 +107,68 @@ export default function Header() {
   }, []);
 
   useEffect(() => {
-    const fetchAllProducts = async () => {
-        const { data } = await supabase.from('products').select(`*, product_variants(*)`).returns<Laptop[]>();
-        if (data) setAllProducts(data);
+    const searchProducts = async () => {
+      if (searchQuery.length < 3) {
+        setSuggestedProducts([]);
+        return;
+      }
+      setIsSearching(true);
+      const response = await fetch(`/api/search?q=${searchQuery}`);
+      if (response.ok) {
+        const data = await response.json();
+        setSuggestedProducts(data);
+      }
+      setIsSearching(false);
     };
-    fetchAllProducts();
-  }, [supabase]);
 
-  useEffect(() => {
-    if (searchQuery.length > 2) {
-      const filtered = allProducts.filter(product =>
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.brand.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setSuggestedProducts(filtered.slice(0, 5));
-    } else {
-      setSuggestedProducts([]);
-    }
-  }, [searchQuery, allProducts]);
+    const debounceTimeout = setTimeout(searchProducts, 300);
+    return () => clearTimeout(debounceTimeout);
+  }, [searchQuery]);
+
 
   const handleLogout = async () => {
     setIsDropdownOpen(false);
+    NProgress.start(); // <-- Mulai TopLoader
     await supabase.auth.signOut();
-    router.push('/?message=logout_success'); // Tidak perlu startNavigationProgress lagi
+    router.push('/?message=logout_success');
   };
 
   const displayName = profile?.full_name || user?.email || '';
   const isAdmin = profile?.role === 'admin';
-  const profileLink = isAdmin ? "/admin" : "/profile";
   const headerClasses = isScrolled ? 'bg-white shadow-md dark:bg-gray-800 dark:border-b dark:border-gray-700' : 'bg-white shadow-md dark:bg-gray-800 dark:border-b dark:border-gray-700';
-  
+
+  // ... (Sisa JSX tetap sama persis seperti sebelumnya) ...
   return (
     <>
       <header className={`sticky top-0 z-50 transition-all duration-300 ${headerClasses}`}>
         <nav className="container mx-auto flex justify-between items-center p-5"> 
           <div className="flex items-center space-x-10">
-            <Link href="/" className="flex items-center space-x-4">
+            <Link href={isAdmin ? "/admin" : "/"} className="flex items-center space-x-4">
               <Image src="/images/Logo-core.png" alt="Core Teknologi Logo" width={64} height={64} className="h-16 w-16" />
               <span className="text-3xl font-bold text-gray-900 dark:text-gray-100">Core Teknologi</span>
             </Link>
-            <div className="hidden md:flex items-center">
-              <Link href="/products" className="text-lg font-semibold text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Produk</Link>
-            </div>
+            {!isAdmin && (
+              <div className="hidden md:flex items-center">
+                <Link href="/products" className="text-lg font-semibold text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Produk</Link>
+              </div>
+            )}
           </div>
           
           <div className="flex items-center space-x-1 sm:space-x-2 text-gray-800 dark:text-gray-200">
-            <button onClick={() => setIsSearchOpen(true)} className="p-2 hover:bg-black/5 rounded-full dark:hover:bg-white/10" aria-label="Buka pencarian">
-                <SearchIcon />
-            </button>
+            {!isAdmin && (
+                <button onClick={() => setIsSearchOpen(true)} className="p-2 hover:bg-black/5 rounded-full dark:hover:bg-white/10" aria-label="Buka pencarian">
+                    <SearchIcon />
+                </button>
+            )}
             
             {user && profile ? (
               <>
-                <button onClick={() => setIsCartOpen(true)} className="relative p-2 hover:bg-black/5 rounded-full dark:hover:bg-white/10" aria-label="Buka keranjang">
-                  <CartIcon />
-                  {cartCount > 0 && (<span className="absolute top-0 right-0 inline-flex items-center justify-center h-5 w-5 text-xs font-bold text-red-100 bg-red-600 rounded-full">{cartCount}</span>)}
-                </button>
+                {!isAdmin && (
+                    <button onClick={() => setIsCartOpen(true)} className="relative p-2 hover:bg-black/5 rounded-full dark:hover:bg-white/10" aria-label="Buka keranjang">
+                    <CartIcon />
+                    {cartCount > 0 && (<span className="absolute top-0 right-0 inline-flex items-center justify-center h-5 w-5 text-xs font-bold text-red-100 bg-red-600 rounded-full">{cartCount}</span>)}
+                    </button>
+                )}
 
                 <div className="relative">
                   <button onClick={() => { setIsNotificationOpen(prev => !prev); setIsDropdownOpen(false); }} className="relative p-2 hover:bg-black/5 rounded-full dark:hover:bg-white/10" aria-label="Buka notifikasi" >
@@ -204,20 +214,29 @@ export default function Header() {
                     {isDropdownOpen && (
                        <motion.div ref={userDropdownRef} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border dark:border-gray-700" >
                          <div className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400 border-b dark:border-gray-600">Halo, {displayName}</div>
-                         {!isAdmin && (
-                            <div className="px-4 py-3 border-b dark:border-gray-600">
-                                <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                                    <WalletIcon />
-                                    <span>Saldo Dompet:</span>
+                         {isAdmin ? (
+                            <>
+                                <button onClick={handleLogout} className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" /></svg>
+                                    <span>Logout</span>
+                                </button>
+                            </>
+                         ) : (
+                            <>
+                                <div className="px-4 py-3 border-b dark:border-gray-600">
+                                    <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                                        <WalletIcon />
+                                        <span>Saldo Dompet:</span>
+                                    </div>
+                                    <p className="font-bold text-lg text-green-600 dark:text-green-400 mt-1">
+                                        {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(profile.wallet_balance || 0)}
+                                    </p>
                                 </div>
-                                <p className="font-bold text-lg text-green-600 dark:text-green-400 mt-1">
-                                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(profile.wallet_balance || 0)}
-                                </p>
-                            </div>
+                                <Link href="/profile" onClick={() => setIsDropdownOpen(false)} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Profil Saya</Link>
+                                <Link href="/orders" onClick={() => setIsDropdownOpen(false)} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Pesanan Saya</Link>
+                                <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10">Logout</button>
+                            </>
                          )}
-                         <Link href={profileLink} onClick={() => setIsDropdownOpen(false)} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">{isAdmin ? 'Dashboard' : 'Profil Saya'}</Link>
-                         {!isAdmin && (<Link href="/orders" onClick={() => setIsDropdownOpen(false)} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Pesanan Saya</Link>)}
-                         <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10">Logout</button>
                        </motion.div>
                     )}
                   </AnimatePresence>
@@ -242,13 +261,23 @@ export default function Header() {
                   <input type="text" name="search" placeholder="Cari produk di Core Teknologi..." className="w-full py-4 pl-6 pr-12 text-lg bg-transparent border-2 border-blue-500 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-500/50" autoFocus value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} autoComplete="off" />
                   <button type="submit" className="absolute top-0 right-0 h-full flex items-center pr-5" aria-label="Cari"><SearchIcon /></button>
               </form>
-              {suggestedProducts.length > 0 && (
+              {(suggestedProducts.length > 0 || isSearching) && (
                 <div className="border-t dark:border-gray-700 mt-2 pt-2">
-                    <ul className="max-h-80 overflow-y-auto">
-                        {suggestedProducts.map(product => (
-                            <li key={product.id}><Link href={`/laptop/${product.id}`} onClick={() => setIsSearchOpen(false)} className="flex items-center p-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"><Image src={product.image_url || '/placeholder.png'} alt={product.name} width={48} height={48} className="w-12 h-12 object-cover rounded-md" /><div className="ml-4"><p className="font-semibold text-gray-900 dark:text-gray-100">{product.name}</p><p className="text-sm text-gray-600 dark:text-gray-400">{product.brand}</p></div></Link></li>
-                        ))}
-                    </ul>
+                    {isSearching ? <p className="text-center p-4 text-gray-500">Mencari...</p> : (
+                        <ul className="max-h-80 overflow-y-auto">
+                            {suggestedProducts.map(product => (
+                                <li key={product.id}>
+                                <Link href={`/laptop/${product.id}`} onClick={() => setIsSearchOpen(false)} className="flex items-center p-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors">
+                                    <Image src={product.image_url || '/placeholder.png'} alt={product.name} width={48} height={48} className="w-12 h-12 object-cover rounded-md" />
+                                    <div className="ml-4">
+                                    <p className="font-semibold text-gray-900 dark:text-gray-100">{product.name}</p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">{product.brand}</p>
+                                    </div>
+                                </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                 </div>
               )}
             </motion.div>

@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { useNotification } from '@/components/notifications/NotificationProvider';
 import { confirmOrderReceived } from './actions';
+import NProgress from 'nprogress'; // <-- Impor NProgress
 
 export default function ConfirmDeliveryButton({ orderId }: { orderId: string }) {
   const [isConfirming, setIsConfirming] = useState(false);
@@ -14,6 +15,7 @@ export default function ConfirmDeliveryButton({ orderId }: { orderId: string }) 
         return;
     }
     setIsConfirming(true);
+    NProgress.start(); // <-- Mulai TopLoader
     const result = await confirmOrderReceived(orderId);
     
     if (result.success) {
@@ -22,6 +24,7 @@ export default function ConfirmDeliveryButton({ orderId }: { orderId: string }) 
       showNotification(result.message, 'error');
       setIsConfirming(false);
     }
+    NProgress.done(); // <-- Hentikan TopLoader
   };
 
   return (

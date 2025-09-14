@@ -2,12 +2,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
+import Link from "@/components/NavigationLoader"; // <-- PERBAIKAN DI SINI
 import Image from 'next/image';
 import { useNotification } from "@/components/notifications/NotificationProvider";
 import { createClient } from "@/lib/supabase/client";
 
-// Tipe data baru untuk mencocokkan hasil dari fungsi RPC
 interface ProductWithStats {
   id: string;
   name: string;
@@ -22,7 +21,6 @@ export default function AdminProductList() {
   const [loading, setLoading] = useState(true);
   const { showNotification } = useNotification();
 
-  // Gunakan useCallback untuk memastikan fungsi fetchProducts tidak berubah di setiap render
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     const supabase = createClient();
@@ -35,11 +33,11 @@ export default function AdminProductList() {
       setProducts(data || []);
     }
     setLoading(false);
-  }, [showNotification]); // Tambahkan showNotification sebagai dependensi useCallback
+  }, [showNotification]);
 
   useEffect(() => {
     fetchProducts();
-  }, [fetchProducts]); // Sekarang useEffect hanya bergantung pada fetchProducts
+  }, [fetchProducts]);
 
   if (loading) {
     return (

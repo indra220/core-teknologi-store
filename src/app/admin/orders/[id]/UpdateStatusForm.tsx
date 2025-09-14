@@ -2,11 +2,12 @@
 'use client';
 
 import { Order, OrderStatus } from "@/types";
-// --- 1. PERBAIKI IMPOR DI SINI ---
-import { useEffect, useActionState } from "react";
+import { useEffect } from "react";
+import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { updateOrderStatus } from "../actions";
 import { useNotification } from "@/components/notifications/NotificationProvider";
+import NProgress from 'nprogress'; // <-- Impor NProgress
 
 function SubmitButton({ disabled }: { disabled: boolean }) {
     const { pending } = useFormStatus();
@@ -14,7 +15,6 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
         <button 
             type="submit" 
             disabled={disabled || pending}
-            // --- 2. HAPUS KELAS CSS 'focus-visible:outline' YANG REDUNDAN ---
             className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
         >
             {pending ? 'Menyimpan...' : 'Simpan Perubahan'}
@@ -29,6 +29,7 @@ export default function UpdateStatusForm({ order }: { order: Order }) {
 
     useEffect(() => {
         if (state.message) {
+            NProgress.done(); // <-- Hentikan TopLoader saat ada hasil
             showNotification(state.message, state.success ? 'success' : 'error');
         }
     }, [state, showNotification]);
@@ -45,7 +46,7 @@ export default function UpdateStatusForm({ order }: { order: Order }) {
     const isFormDisabled = order.status === 'Selesai' || order.status === 'Dibatalkan';
 
     return (
-        <form action={formAction} className="flex items-center gap-4">
+        <form action={formAction} className="flex items-center gap-4" onSubmit={() => NProgress.start()}>
             <input type="hidden" name="orderId" value={order.id} />
             <input type="hidden" name="userId" value={order.user_id} />
             <div>

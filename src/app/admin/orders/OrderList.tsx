@@ -2,7 +2,7 @@
 'use client';
 
 import { Order } from "@/types";
-import Link from "next/link"; // Impor Link
+import Link from "@/components/NavigationLoader"; // <-- PERBAIKAN DI SINI
 
 // Fungsi bantuan untuk badge status
 const getStatusBadgeColor = (status: string) => {

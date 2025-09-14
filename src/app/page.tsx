@@ -1,46 +1,32 @@
 // src/app/page.tsx
-
 import { createClient } from "@/lib/supabase/server";
-import Link from 'next/link';
+import Link from '@/components/NavigationLoader'; // Ganti ke NavigationLoader
 import Image from 'next/image';
 import { Product } from "@/types";
+import { redirect } from 'next/navigation'; // Impor redirect
 
 export const runtime = 'edge';
-export const revalidate = 3600; // Revalidate setiap 1 jam
+export const revalidate = 3600;
 
-/**
- * Fungsi ini mengambil produk yang paling banyak dibeli (best-selling).
- * Logikanya adalah menjumlahkan kuantitas dari setiap produk yang terjual
- * di tabel 'order_items', kemudian mengambil detail produk tersebut.
- */
 async function getBestSellingProducts(limit = 4): Promise<Product[]> {
   const supabase = await createClient();
-
-  // 1. Ambil semua item yang pernah dipesan beserta kuantitasnya
   const { data: orderItems, error: orderItemsError } = await supabase
     .from('order_items')
     .select('product_id, quantity');
-
   if (orderItemsError || !orderItems) {
     console.error("Gagal mengambil data pesanan:", orderItemsError);
     return [];
   }
-
-  // 2. Hitung total kuantitas penjualan untuk setiap ID produk
   const productSales = orderItems.reduce((acc, item) => {
     if (item.product_id) {
       acc[item.product_id] = (acc[item.product_id] || 0) + item.quantity;
     }
     return acc;
   }, {} as Record<string, number>);
-
-  // 3. Urutkan ID produk berdasarkan total penjualan tertinggi
   const topProductIds = Object.entries(productSales)
-    .sort(([, a], [, b]) => b - a) // 'b - a' untuk urutan menurun (terlaris)
+    .sort(([, a], [, b]) => b - a)
     .slice(0, limit)
     .map(([id]) => id);
-
-  // Jika tidak ada penjualan sama sekali, tampilkan produk terbaru sebagai alternatif
   if (topProductIds.length === 0) {
     const { data: latestProducts } = await supabase
       .from('products')
@@ -49,23 +35,35 @@ async function getBestSellingProducts(limit = 4): Promise<Product[]> {
       .limit(limit);
     return latestProducts || [];
   }
-
-  // 4. Ambil detail produk terlaris dari database
   const { data: bestSellers, error: bestSellersError } = await supabase
     .from('products')
     .select(`*, product_variants(price)`)
     .in('id', topProductIds);
-
   if (bestSellersError) {
     console.error("Gagal mengambil produk terlaris:", bestSellersError);
     return [];
   }
-
-  // Pastikan urutan produk sesuai dengan urutan terlarisnya
   return bestSellers.sort((a, b) => productSales[b.id] - productSales[a.id]);
 }
 
 export default async function HomePage() {
+  // --- LOGIKA BARU UNTUK REDIRECT ADMIN ---
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.role === 'admin') {
+      redirect('/admin'); // Jika admin, langsung redirect ke dashboard
+    }
+  }
+  // --- AKHIR LOGIKA BARU ---
+
   const products = await getBestSellingProducts(4);
 
   return (

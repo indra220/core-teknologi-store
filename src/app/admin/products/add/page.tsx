@@ -2,13 +2,15 @@
 'use client';
 
 import { useState } from "react";
-import { useActionState } from "react"; // <-- PERBAIKAN DI SINI
+import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { addProductWithVariants } from "./actions";
-import Link from "next/link";
+import Link from "@/components/NavigationLoader"; // Ganti Link
 import CurrencyInput from '@/components/CurrencyInput';
 import { TrashIcon, PlusCircleIcon } from '@heroicons/react/24/outline';
+import NProgress from 'nprogress'; // Impor NProgress
 
+// ... (Interface Variant dan SubmitButton tidak berubah) ...
 interface Variant {
   id: number;
   price: string;
@@ -27,6 +29,7 @@ function SubmitButton() {
     </button>
   );
 }
+
 
 export default function AddProductPage() {
   const initialState = { message: null, type: null };
@@ -57,7 +60,8 @@ export default function AddProductPage() {
         <p className="mt-2 text-lg text-gray-600 dark:text-gray-300">Isi detail produk dasar dan tambahkan satu atau lebih varian.</p>
       </header>
       
-      <form action={formAction}>
+      <form action={formAction} onSubmit={() => NProgress.start()}>
+        {/* ... (Isi form tidak berubah) ... */}
         <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 space-y-6">
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Informasi Produk Dasar</h2>
           <div>

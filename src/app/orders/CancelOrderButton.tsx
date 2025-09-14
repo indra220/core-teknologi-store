@@ -6,27 +6,28 @@ import { useNotification } from '@/components/notifications/NotificationProvider
 import { cancelOrder } from './actions';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
-import { useSession } from '@/context/SessionContext'; // <-- IMPOR useSession
+import { useSession } from '@/context/SessionContext';
+import NProgress from 'nprogress'; // <-- Impor NProgress
 
 export default function CancelOrderButton({ orderId }: { orderId: string }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const { showNotification } = useNotification();
-  const { refreshSession } = useSession(); // <-- AMBIL FUNGSI REFRESH
+  const { refreshSession } = useSession();
 
   const handleConfirmCancel = async () => {
     setIsCancelling(true);
+    NProgress.start(); // <-- Mulai TopLoader
     const result = await cancelOrder(orderId);
     
     if (result.success) {
-      await refreshSession(); // <-- REFRESH DATA SETELAH SUKSES
+      await refreshSession();
       showNotification(result.message, 'success');
     } else {
       showNotification(result.message, 'error');
     }
+    NProgress.done(); // <-- Hentikan TopLoader
     setIsModalOpen(false);
-    // Kita set isCancelling kembali ke false setelah modal ditutup dan notif muncul
-    // agar tombol bisa diklik lagi jika ada error.
     setIsCancelling(false);
   };
 

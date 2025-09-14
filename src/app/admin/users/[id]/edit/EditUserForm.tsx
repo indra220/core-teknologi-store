@@ -1,13 +1,16 @@
+// src/app/admin/users/[id]/edit/EditUserForm.tsx
 'use client';
 
 import { Profile } from "@/types";
-import { useActionState } from "react";      // Diimpor dari 'react'
-import { useFormStatus } from "react-dom";    // Diimpor dari 'react-dom'
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { updateUserByAdmin, deleteUserByAdmin } from "./actions";
-import Link from "next/link";
+import Link from "@/components/NavigationLoader"; // Ganti Link
 import { useState } from "react";
 import { motion } from 'framer-motion';
+import NProgress from 'nprogress'; // Impor NProgress
 
+// ... (SubmitButton and DeleteButton components remain the same) ...
 function SubmitButton({ isDisabled }: { isDisabled: boolean }) {
   const { pending } = useFormStatus();
   const disabled = pending || isDisabled;
@@ -35,6 +38,7 @@ function DeleteButton({ isDisabled }: { isDisabled: boolean }) {
   );
 }
 
+
 export default function EditUserForm({ user }: { user: Profile }) {
   const initialState = { message: null, type: null };
   const [updateState, updateAction] = useActionState(updateUserByAdmin, initialState);
@@ -44,17 +48,18 @@ export default function EditUserForm({ user }: { user: Profile }) {
   const isPasswordEmpty = adminPassword.trim() === '';
   const isEditingAdmin = user.role === 'admin';
 
-  // Fungsi untuk konfirmasi sebelum form hapus di-submit
   const handleConfirmDelete = (event: React.FormEvent<HTMLFormElement>) => {
-    if (!window.confirm(`Anda yakin ingin menghapus pengguna ${user.username}? Aksi ini tidak bisa dibatalkan.`)) {
-      event.preventDefault(); // Batalkan submit form jika pengguna klik 'Cancel'
+    if (window.confirm(`Anda yakin ingin menghapus pengguna ${user.username}? Aksi ini tidak bisa dibatalkan.`)) {
+      NProgress.start(); // Mulai TopLoader saat konfirmasi hapus
+    } else {
+      event.preventDefault();
     }
   };
 
   return (
     <>
       <div className="bg-white p-8 sm:p-10 rounded-2xl shadow-xl border border-gray-100">
-        <form action={updateAction} className="space-y-6">
+        <form action={updateAction} className="space-y-6" onSubmit={() => NProgress.start()}>
           <input type="hidden" name="userId" value={user.id} />
           <div>
             <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>

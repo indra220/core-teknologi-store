@@ -1,8 +1,9 @@
+// src/app/admin/users/UserList.tsx
 'use client';
 
 import { useState, useMemo } from "react";
-import { Profile } from "@/types"; // Impor 'Profile' digunakan di sini
-import Link from "next/link";
+import { Profile } from "@/types";
+import Link from "@/components/NavigationLoader"; // <-- PERBAIKAN DI SINI
 
 // --- Komponen & Ikon ---
 const Avatar = ({ name }: { name: string }) => {

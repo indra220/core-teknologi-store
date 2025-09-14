@@ -3,7 +3,7 @@
 
 import { useCart } from "@/context/CartContext";
 import Image from "next/image";
-import Link from "next/link";
+import Link from "@/components/NavigationLoader"; // Ganti Link
 import { CartItem } from "@/context/CartContext";
 import PayPalPayment from "@/components/PayPalButtons";
 import { useState, useEffect } from "react";
@@ -12,17 +12,18 @@ import { Profile } from "@/types";
 import { createOrderFromWallet } from "./actions";
 import { useNotification } from "@/components/notifications/NotificationProvider";
 import ConfirmationModal from "@/components/ConfirmationModal";
-import { useRouter } from "next/navigation"; // <-- IMPOR useRouter
+import { useRouter } from "next/navigation";
+import NProgress from 'nprogress'; // <-- Impor NProgress
 
-// Ikon
+// ... (Ikon-ikon tidak berubah) ...
 const WalletIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25-2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9M3 12V9m18 3a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18 3V9a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18-3h-2.25a2.25 2.25 0 0 0-2.25 2.25V9M3 9V6.75A2.25 2.25 0 0 1 5.25 4.5h13.5A2.25 2.25 0 0 1 21 6.75V9" /></svg>;
 const ConfirmationIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-green-600 dark:text-green-400"><path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25-2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9M3 12V9m18 3a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18 3V9a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18-3h-2.25a2.25 2.25 0 0 0-2.25 2.25V9M3 9V6.75A2.25 2.25 0 0 1 5.25 4.5h13.5A2.25 2.25 0 0 1 21 6.75V9" /></svg>;
 
 
 export default function CheckoutPage() {
-  const { cartItems, cartCount, updateQuantity, removeFromCart, clearClientCart } = useCart(); // <-- AMBIL clearClientCart
+  const { cartItems, cartCount, updateQuantity, removeFromCart, clearClientCart } = useCart();
   const { showNotification } = useNotification();
-  const router = useRouter(); // <-- DEFINISIKAN ROUTER
+  const router = useRouter();
   
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -54,21 +55,21 @@ export default function CheckoutPage() {
 
   const handleConfirmPayment = async () => {
     setIsProcessing(true);
+    NProgress.start(); // <-- Mulai TopLoader
     const result = await createOrderFromWallet(cartItems);
     
-    // Alur baru setelah server action selesai
     if (result.success) {
       showNotification(result.message, 'success');
-      clearClientCart(); // Bersihkan keranjang di state
-      router.push('/orders?status=success'); // Arahkan pengguna
+      clearClientCart();
+      router.push('/orders?status=success');
     } else {
       setIsProcessing(false);
       setIsModalOpen(false);
       showNotification(result.message, 'error');
+      NProgress.done(); // <-- Hentikan jika gagal
     }
   };
 
-  // ... (sisa kode komponen tidak berubah)
   if (cartCount === 0) {
     return (
       <div className="text-center py-20">
@@ -108,7 +109,7 @@ export default function CheckoutPage() {
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-          {/* Kolom Kiri: Daftar Produk */}
+          {/* ... Sisa JSX tidak berubah ... */}
           <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700">
             <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">Produk Pesanan ({cartCount})</h2>
             <ul className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -130,7 +131,6 @@ export default function CheckoutPage() {
             </ul>
           </div>
           
-          {/* Kolom Kanan: Ringkasan & Form Checkout */}
           <div className="lg:col-span-1">
             <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 sticky top-24">
               <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">Ringkasan Pesanan</h2>

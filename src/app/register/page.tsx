@@ -1,9 +1,11 @@
+// src/app/register/page.tsx
 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import Link from 'next/link';
+import Link from '@/components/NavigationLoader'; // Ganti Link
+import NProgress from 'nprogress'; // Impor NProgress
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
@@ -21,6 +23,7 @@ export default function RegisterPage() {
     setError(null);
     setMessage(null);
     setLoading(true);
+    NProgress.start(); // <-- Mulai TopLoader
 
     const { error: signUpError } = await supabase.auth.signUp({
       email,
@@ -37,6 +40,7 @@ export default function RegisterPage() {
 
     if (signUpError) {
       setError(signUpError.message);
+      NProgress.done(); // <-- Hentikan jika gagal
     } else {
       setMessage('Registrasi berhasil! Silakan cek email Anda untuk verifikasi.');
       setTimeout(() => {
@@ -65,6 +69,7 @@ export default function RegisterPage() {
         )}
 
         <form onSubmit={handleRegister} className="space-y-6">
+          {/* ... Sisa JSX form tidak berubah ... */}
           <div>
             <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">Nama Lengkap</label>
             <input

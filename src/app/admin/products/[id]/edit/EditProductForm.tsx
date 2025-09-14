@@ -4,13 +4,14 @@
 import { useState, useEffect } from "react";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import Link from "next/link";
+import Link from "@/components/NavigationLoader"; // Ganti Link
 import CurrencyInput from '@/components/CurrencyInput';
 import { TrashIcon, PlusCircleIcon } from '@heroicons/react/24/outline';
 import { updateProductAndVariants } from "./actions";
 import type { Product, ProductVariant } from "@/types";
+import NProgress from 'nprogress'; // Impor NProgress
 
-// Tipe data varian di client, dengan 'tempId' untuk item baru
+// ... (ClientVariant and SubmitButton components remain the same) ...
 type ClientVariant = Partial<ProductVariant> & { tempId: number };
 
 function SubmitButton() {
@@ -21,6 +22,7 @@ function SubmitButton() {
     </button>
   );
 }
+
 
 export default function EditProductForm({ product }: { product: Product }) {
   const initialState = { message: null, type: null };
@@ -61,10 +63,9 @@ export default function EditProductForm({ product }: { product: Product }) {
   };
   
   return (
-    <form action={formAction}>
+    <form action={formAction} onSubmit={() => NProgress.start()}>
       <input type="hidden" name="productId" value={product.id} />
       
-      {/* Bagian Informasi Produk Dasar */}
       <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 space-y-6">
         <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Informasi Produk Dasar</h2>
         <div>
@@ -81,7 +82,6 @@ export default function EditProductForm({ product }: { product: Product }) {
           </div>
       </div>
 
-      {/* Bagian Varian Produk */}
       <div className="mt-8 bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 space-y-8">
         <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Manajemen Varian & Stok</h2>
         {variants.map((variant, index) => (
@@ -90,8 +90,6 @@ export default function EditProductForm({ product }: { product: Product }) {
             <button type="button" onClick={() => removeVariant(variant)} className="absolute top-4 right-4 text-red-500 hover:text-red-700">
               <TrashIcon className="w-5 h-5"/>
             </button>
-
-            {/* --- PENAMBAHAN INPUT BARU DIMULAI DI SINI --- */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Harga (Rp)</label>
@@ -122,7 +120,6 @@ export default function EditProductForm({ product }: { product: Product }) {
                   <input type="text" value={variant.screen_size || ''} onChange={e => handleVariantChange(variant.tempId, 'screen_size', e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
             </div>
-             {/* --- AKHIR DARI PENAMBAHAN INPUT --- */}
           </div>
         ))}
         <button type="button" onClick={addVariant} className="flex items-center gap-2 font-semibold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">

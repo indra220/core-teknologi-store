@@ -9,46 +9,17 @@ export default function TopLoader() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  // Efek ini akan berjalan setiap kali URL berubah, menandakan navigasi selesai.
   useEffect(() => {
     NProgress.done();
   }, [pathname, searchParams]);
 
+  // Efek untuk konfigurasi awal NProgress (hanya berjalan sekali)
   useEffect(() => {
-    // Konfigurasi NProgress yang disederhanakan tanpa spinner
     NProgress.configure({ 
-      showSpinner: false, // <-- Pastikan spinner tidak ditampilkan
-      easing: 'ease',
-      speed: 500,
-      trickle: true,
-      trickleSpeed: 200,
-      minimum: 0.1,
+      showSpinner: false,
     });
-
-    // Logika monkey-patching tetap sama untuk memastikan bar muncul otomatis
-    const originalPushState = window.history.pushState;
-    window.history.pushState = function (...args) {
-      NProgress.start();
-      return originalPushState.apply(window.history, args);
-    };
-
-    const originalReplaceState = window.history.replaceState;
-    window.history.replaceState = function (...args) {
-        NProgress.start();
-        return originalReplaceState.apply(window.history, args);
-    };
-
-    const handlePopState = () => {
-        NProgress.start();
-    };
-
-    window.addEventListener('popstate', handlePopState);
-
-    return () => {
-      window.history.pushState = originalPushState;
-      window.history.replaceState = originalReplaceState;
-      window.removeEventListener('popstate', handlePopState);
-    };
   }, []);
 
-  return null;
+  return null; // Komponen ini tidak merender UI apapun.
 }

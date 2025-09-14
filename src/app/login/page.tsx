@@ -1,11 +1,12 @@
 // src/app/login/page.tsx
-
 'use client';
 
-import { Suspense, useState } from 'react';
-import Link from 'next/link';
+import { Suspense, useState, useEffect } from 'react';
+import Link from '@/components/NavigationLoader';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useSession } from '@/context/SessionContext';
+import NProgress from 'nprogress'; // <-- Impor NProgress
 
 function LoginForm() {
   const [username, setUsername] = useState('');
@@ -14,26 +15,36 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+  const { profile } = useSession();
+
+  useEffect(() => {
+    if (profile) {
+      const targetUrl = profile.role === 'admin' ? '/admin' : '/';
+      router.replace(targetUrl);
+    }
+  }, [profile, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    NProgress.start(); // <-- Mulai TopLoader saat submit
 
-    const { data: profile, error: profileError } = await supabase
+    const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .select('email')
+      .select('email, role')
       .ilike('username', username)
       .single();
 
-    if (profileError || !profile || !profile.email) {
+    if (profileError || !profileData || !profileData.email) {
       setError('Username tidak ditemukan.');
       setLoading(false);
+      NProgress.done(); // <-- Hentikan jika gagal
       return;
     }
 
     const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: profile.email,
+      email: profileData.email,
       password,
     });
     
@@ -41,9 +52,8 @@ function LoginForm() {
 
     if (signInError) {
       setError('Username atau password salah.');
+      NProgress.done(); // <-- Hentikan jika gagal
     } else {
-      // PERBAIKAN: Hapus router.refresh() dan cukup arahkan pengguna.
-      // Header akan diperbarui secara otomatis oleh onAuthStateChange.
       router.push('/?message=login_success');
     }
   };
