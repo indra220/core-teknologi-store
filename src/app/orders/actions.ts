@@ -35,7 +35,6 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
     return { success: false, message: `Pesanan dengan status "${order.status}" tidak dapat dibatalkan.` };
   }
 
-  // Panggil fungsi RPC baru untuk membatalkan DAN refund
   const { error: rpcError } = await supabase.rpc('cancel_order_and_refund_to_wallet', {
     order_id_to_cancel: orderId,
     new_status: 'Dibatalkan'
@@ -53,7 +52,7 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
   });
 
   revalidatePath('/orders');
-  revalidatePath('/', 'layout'); // Revalidate layout untuk update saldo di header
+  revalidatePath('/', 'layout');
   return { success: true, message: "Pesanan berhasil dibatalkan. Saldo telah masuk ke dompet Anda." };
 }
 
@@ -67,9 +66,9 @@ export async function confirmOrderReceived(orderId: string): Promise<ActionResul
 
     const { data: order, error: fetchError } = await supabase
         .from('orders')
-        .select('status, user_id')
+        .select('status, user_id, profiles ( username )')
         .eq('id', orderId)
-        .single();
+        .single<{ status: string; user_id: string; profiles: { username: string } | { username: string }[] }>();
 
     if (fetchError || !order) {
         return { success: false, message: "Pesanan tidak ditemukan." };
@@ -83,18 +82,50 @@ export async function confirmOrderReceived(orderId: string): Promise<ActionResul
         return { success: false, message: "Hanya pesanan yang sedang dikirim yang dapat dikonfirmasi." };
     }
 
-    const { error: updateError } = await supabase
+    const { data: updatedOrder, error: updateError } = await supabase
         .from('orders')
         .update({ status: 'Selesai' })
-        .eq('id', orderId);
+        .eq('id', orderId)
+        .select()
+        .single();
 
     if (updateError) {
-        return { success: false, message: "Gagal mengonfirmasi pesanan." };
+        console.error("Supabase update error:", updateError);
+        return { success: false, message: `Gagal mengonfirmasi pesanan: ${updateError.message}` };
+    }
+
+    if (!updatedOrder) {
+        return { success: false, message: "Gagal menyimpan perubahan. Kemungkinan karena masalah perizinan pada database." };
+    }
+
+    try {
+        const { data: admins } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('role', 'admin');
+
+        if (admins && admins.length > 0) {
+            // --- PERBAIKAN DI SINI ---
+            // Mengakses elemen pertama dari array 'profiles' sebelum mengambil 'username'
+            const customerUsername = Array.isArray(order.profiles) 
+                ? order.profiles[0]?.username 
+                : order.profiles?.username || 'Seorang pelanggan';
+            
+            const adminNotifications = admins.map(admin => ({
+                user_id: admin.id,
+                message: `${customerUsername} telah menyelesaikan pesanan #${orderId.substring(0, 8)}.`,
+                link: `/admin/orders/${orderId}`
+            }));
+            await supabase.from('notifications').insert(adminNotifications);
+        }
+    } catch (e) {
+        console.error("Gagal mengirim notifikasi ke admin:", e);
     }
 
     revalidatePath('/orders');
     revalidatePath('/admin/report');
     revalidatePath('/admin/orders');
+    revalidatePath('/', 'layout');
 
     return { success: true, message: "Pesanan telah diselesaikan. Terima kasih telah berbelanja!" };
 }
