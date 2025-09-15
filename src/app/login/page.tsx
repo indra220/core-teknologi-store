@@ -1,4 +1,3 @@
-// src/app/login/page.tsx
 'use client';
 
 import { Suspense, useState, useEffect } from 'react';
@@ -6,7 +5,7 @@ import Link from '@/components/NavigationLoader';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useSession } from '@/context/SessionContext';
-import NProgress from 'nprogress'; // <-- Impor NProgress
+import NProgress from 'nprogress';
 
 function LoginForm() {
   const [username, setUsername] = useState('');
@@ -28,7 +27,7 @@ function LoginForm() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    NProgress.start(); // <-- Mulai TopLoader saat submit
+    NProgress.start();
 
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
@@ -39,7 +38,7 @@ function LoginForm() {
     if (profileError || !profileData || !profileData.email) {
       setError('Username tidak ditemukan.');
       setLoading(false);
-      NProgress.done(); // <-- Hentikan jika gagal
+      NProgress.done();
       return;
     }
 
@@ -52,8 +51,13 @@ function LoginForm() {
 
     if (signInError) {
       setError('Username atau password salah.');
-      NProgress.done(); // <-- Hentikan jika gagal
+      NProgress.done();
     } else {
+      // --- TAMBAHKAN LOGIKA INI ---
+      // Atur waktu mulai sesi di localStorage setelah login berhasil
+      localStorage.setItem('sessionStartTime', Date.now().toString());
+      localStorage.setItem('userRole', profileData.role); // Simpan juga role
+      // --- AKHIR PENAMBAHAN ---
       router.push('/?message=login_success');
     }
   };

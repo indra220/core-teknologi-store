@@ -1,10 +1,10 @@
-// src/context/SessionContext.tsx
 'use client';
 
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 import type { Profile } from '@/types';
+import { useRouter } from 'next/navigation'; // <-- Impor useRouter
 
 // Definisikan tipe notifikasi di sini agar konsisten
 interface AppNotification {
@@ -37,35 +37,91 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
+  const router = useRouter(); // <-- Inisialisasi router
 
   const fetchSessionData = useCallback(async (sessionUser: User | null) => {
     if (sessionUser) {
       setUser(sessionUser);
 
-      // Ambil profil dan notifikasi secara bersamaan
       const [profileRes, notificationsRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', sessionUser.id).single(),
         supabase.from('notifications').select('*').eq('user_id', sessionUser.id).order('created_at', { ascending: false })
       ]);
       
-      setProfile(profileRes.data as Profile | null);
+      const userProfile = profileRes.data as Profile | null;
+      setProfile(userProfile);
       setNotifications(notificationsRes.data as AppNotification[] || []);
+
+      // Simpan role di localStorage untuk pengecekan timeout
+      if (userProfile?.role) {
+        localStorage.setItem('userRole', userProfile.role);
+      }
 
     } else {
       setUser(null);
       setProfile(null);
       setNotifications([]);
+      // Hapus data saat logout
+      localStorage.removeItem('sessionStartTime');
+      localStorage.removeItem('userRole');
     }
     setLoading(false);
   }, [supabase]);
 
+  // --- LOGIKA BARU UNTUK SESSION TIMEOUT ---
   useEffect(() => {
-    // Ambil sesi awal saat komponen dimuat
+    const events = ['mousemove', 'keydown', 'mousedown', 'touchstart'];
+
+    const resetTimer = () => {
+      const sessionStart = localStorage.getItem('sessionStartTime');
+      if (sessionStart) {
+        localStorage.setItem('sessionStartTime', Date.now().toString());
+      }
+    };
+
+    // Tambahkan event listener untuk mereset timer pada aktivitas pengguna
+    events.forEach(event => window.addEventListener(event, resetTimer));
+
+    const checkSessionTimeout = async () => {
+      const sessionStart = localStorage.getItem('sessionStartTime');
+      const userRole = localStorage.getItem('userRole');
+
+      if (sessionStart && userRole) {
+        const now = Date.now();
+        const startTime = parseInt(sessionStart, 10);
+        
+        // Durasi timeout: 24 jam untuk admin, 2 jam untuk user (dalam milidetik)
+        const timeoutDuration = userRole === 'admin' 
+          ? 24 * 60 * 60 * 1000 
+          : 2 * 60 * 60 * 1000;
+
+        if (now - startTime > timeoutDuration) {
+          alert('Sesi Anda telah berakhir. Silakan login kembali.');
+          await supabase.auth.signOut();
+          router.push('/login');
+          // Hapus data dari localStorage
+          localStorage.removeItem('sessionStartTime');
+          localStorage.removeItem('userRole');
+        }
+      }
+    };
+
+    // Cek timeout setiap 1 menit
+    const intervalId = setInterval(checkSessionTimeout, 60 * 1000);
+
+    // Bersihkan listener dan interval saat komponen unmount
+    return () => {
+      events.forEach(event => window.removeEventListener(event, resetTimer));
+      clearInterval(intervalId);
+    };
+  }, [supabase, router]);
+  // --- AKHIR LOGIKA BARU ---
+
+  useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       fetchSessionData(session?.user ?? null);
     });
 
-    // Dengarkan perubahan status autentikasi
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       fetchSessionData(session?.user ?? null);
     });
@@ -73,7 +129,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, [fetchSessionData, supabase]);
   
-  // Fungsi ini yang akan kita panggil untuk refresh data secara manual
   const refreshSession = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     await fetchSessionData(session?.user ?? null);

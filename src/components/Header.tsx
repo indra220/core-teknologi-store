@@ -1,4 +1,3 @@
-// src/components/Header.tsx
 'use client';
 
 import { useState, useEffect, useRef, RefObject } from 'react';
@@ -14,8 +13,6 @@ import { markNotificationAsRead, deleteNotification } from '@/lib/actions/notifi
 import { useSession } from '@/context/SessionContext';
 import NProgress from 'nprogress';
 
-// ... (Kode Ikon dan hook useOnClickOutside tidak berubah) ...
-// ... (Saya persingkat untuk kejelasan, kode aslinya tetap sama) ...
 interface Notification {
   id: string;
   message: string;
@@ -128,7 +125,12 @@ export default function Header() {
 
   const handleLogout = async () => {
     setIsDropdownOpen(false);
-    NProgress.start(); // <-- Mulai TopLoader
+    NProgress.start();
+    // --- TAMBAHKAN LOGIKA INI ---
+    // Hapus data sesi dari localStorage saat logout
+    localStorage.removeItem('sessionStartTime');
+    localStorage.removeItem('userRole');
+    // --- AKHIR PENAMBAHAN ---
     await supabase.auth.signOut();
     router.push('/?message=logout_success');
   };
@@ -137,7 +139,6 @@ export default function Header() {
   const isAdmin = profile?.role === 'admin';
   const headerClasses = isScrolled ? 'bg-white shadow-md dark:bg-gray-800 dark:border-b dark:border-gray-700' : 'bg-white shadow-md dark:bg-gray-800 dark:border-b dark:border-gray-700';
 
-  // ... (Sisa JSX tetap sama persis seperti sebelumnya) ...
   return (
     <>
       <header className={`sticky top-0 z-50 transition-all duration-300 ${headerClasses}`}>
