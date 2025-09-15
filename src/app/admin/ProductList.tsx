@@ -99,7 +99,11 @@ export default function AdminProductList() {
                     {product.total_stock || 0}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                    <Link href={`/admin/products/${product.id}/edit`} className="text-indigo-600 hover:text-indigo-400 mr-4">
+                    {/* --- PERUBAHAN DI SINI --- */}
+                    <Link 
+                      href={`/admin/products/${product.id}/edit`} 
+                      className="inline-block px-4 py-2 text-xs font-semibold text-white bg-indigo-600 rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                    >
                       Kelola Varian
                     </Link>
                   </td>

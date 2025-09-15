@@ -1,6 +1,7 @@
 // src/app/admin/page.tsx
 import { getDashboardStats } from "./actions";
 import type { Order } from "@/types";
+import SalesChart from './SalesChart'; // <-- Impor komponen chart baru
 
 // Definisikan tipe data yang lebih spesifik agar cocok dengan data dari actions.ts
 type RecentOrder = Pick<Order, 'id' | 'created_at' | 'total_amount' | 'profiles'>;
@@ -11,16 +12,18 @@ const ShoppingCartIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className
 const UsersIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.122-1.28-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.653.122-1.28.356-1.857m0 0a5.002 5.002 0 019.288 0M12 14a5 5 0 100-10 5 5 0 000 10z" /></svg> );
 const BoxIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4M4 7l8 4.5 8-4.5M12 11.5V15" /></svg> );
 
-// --- Komponen ---
+// --- Komponen StatCard yang Diperbarui ---
 const StatCard = ({ title, value, icon }: { title: string; value: string; icon: React.ReactNode; }) => (
-  <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 flex items-center space-x-4">
-    <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-full">{icon}</div>
-    <div>
-      <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">{title}</p>
-      <p className="text-3xl font-extrabold text-gray-900 dark:text-gray-100">{value}</p>
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 flex items-center space-x-4 overflow-hidden">
+        <div className="flex-shrink-0 bg-gray-100 dark:bg-gray-700 p-3 rounded-full">{icon}</div>
+        <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 truncate">{title}</p>
+            {/* --- PEMBARUAN DI SINI --- */}
+            <p className="text-xl sm:text-2xl xl:text-3xl font-extrabold text-gray-900 dark:text-gray-100">{value}</p>
+        </div>
     </div>
-  </div>
 );
+
 
 const RecentActivity = ({ orders, newUsersCount }: { orders: RecentOrder[], newUsersCount: number }) => {
     return (
@@ -88,9 +91,10 @@ export default async function AdminDashboardPage() {
       
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
-             <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Statistik Penjualan</h3>
-             <div className="h-64 flex items-center justify-center text-gray-400">
-                Area Grafik Penjualan (Coming Soon)
+             <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Statistik Penjualan (30 Hari Terakhir)</h3>
+             {/* --- PERUBAHAN DI SINI: Placeholder diganti dengan komponen chart --- */}
+             <div className="relative h-80">
+                <SalesChart salesTrend={stats.salesTrend} />
              </div>
         </div>
         <div className="lg:col-span-1">

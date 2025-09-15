@@ -58,9 +58,13 @@ export default function OrderList({ orders }: { orders: Order[] }) {
                         </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                        <Link href={`/admin/orders/${order.id}`} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
-                            Lihat Detail
-                        </Link>
+                      {/* --- PERUBAHAN DI SINI --- */}
+                      <Link 
+                        href={`/admin/orders/${order.id}`} 
+                        className="inline-block px-4 py-2 text-xs font-semibold text-white bg-indigo-600 rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                      >
+                          Lihat Detail
+                      </Link>
                     </td>
                 </tr>
             ))}
