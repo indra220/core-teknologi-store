@@ -7,7 +7,7 @@ import { Chart as ChartJS, CategoryScale, LinearScale, Title, Tooltip, Legend, P
 import { CubeTransparentIcon, BanknotesIcon, UsersIcon } from '@heroicons/react/24/outline';
 import dynamic from "next/dynamic";
 import { exportToExcel } from "@/lib/utils/export";
-import NProgress from 'nprogress'; // <-- 1. Impor NProgress
+import NProgress from 'nprogress';
 
 // --- Dynamic Imports for Charts ---
 const Line = dynamic(() => import('react-chartjs-2').then(mod => mod.Line), { ssr: false });
@@ -19,7 +19,8 @@ ChartJS.register(CategoryScale, LinearScale, Title, Tooltip, Legend, PointElemen
 const SearchIcon = () => <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>;
 const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 const PdfIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
-const ExcelIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3M4 17h16a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>;
+// --- PERBAIKAN DI SINI: Komponen ExcelIcon disembunyikan/dikomentari karena tidak lagi digunakan ---
+// const ExcelIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3M4 17h16a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>;
 
 // --- Main Component ---
 export default function ReportClientComponent({ allOrders, allLaptops }: { allOrders: Order[], allLaptops: Laptop[] }) {
@@ -88,9 +89,8 @@ export default function ReportClientComponent({ allOrders, allLaptops }: { allOr
   const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
   const currentOrders = filteredOrders.slice((currentPage - 1) * ordersPerPage, currentPage * ordersPerPage);
   
-  // --- 2. Perbarui Fungsi handleExport ---
   const handleExport = async (format: 'pdf' | 'excel') => {
-    NProgress.start(); // <-- Mulai TopLoader di awal
+    NProgress.start();
     const rangeText = `${timeRange} Hari Terakhir`;
 
     if (format === 'excel') {
@@ -100,9 +100,9 @@ export default function ReportClientComponent({ allOrders, allLaptops }: { allOr
         console.error("Gagal mengekspor Excel:", error);
         alert("Terjadi kesalahan saat membuat file Excel.");
       } finally {
-        NProgress.done(); // <-- Hentikan TopLoader setelah selesai
+        NProgress.done();
       }
-    } else { // PDF export
+    } else {
       try {
         const params = new URLSearchParams({
           timeRange: timeRange.toString(),
@@ -129,14 +129,13 @@ export default function ReportClientComponent({ allOrders, allLaptops }: { allOr
         const message = error instanceof Error ? error.message : "Terjadi kesalahan yang tidak diketahui.";
         alert(`Gagal mengunduh PDF: ${message}`);
       } finally {
-        NProgress.done(); // <-- Hentikan TopLoader setelah selesai (termasuk jika error)
+        NProgress.done();
       }
     }
   };
 
   return (
     <>
-      {/* STATS CARDS */}
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard title={`Pendapatan (${timeRange} Hari)`} value={new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(stats.totalRevenue)} icon={<BanknotesIcon className="h-8 w-8 text-green-500" />} />
         <StatCard title={`Total Pesanan (${timeRange} Hari)`} value={stats.totalOrders.toString()} icon={<CubeTransparentIcon className="h-8 w-8 text-blue-500" />} />
@@ -144,7 +143,6 @@ export default function ReportClientComponent({ allOrders, allLaptops }: { allOr
         <StatCard title="Total Produk" value={stats.totalProducts.toString()} icon={<CubeTransparentIcon className="h-8 w-8 text-yellow-500" />} />
       </section>
 
-      {/* EXPORT CONTROLS */}
       <section className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 mb-8">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
           <div>
@@ -161,13 +159,21 @@ export default function ReportClientComponent({ allOrders, allLaptops }: { allOr
             </div>
             <div className="flex items-center gap-3">
               <button onClick={() => handleExport('pdf')} className="flex items-center justify-center px-4 py-2 bg-red-50 text-red-700 font-semibold rounded-lg hover:bg-red-100 dark:bg-red-900/50 dark:text-red-300 dark:hover:bg-red-900 transition-all transform hover:scale-105 shadow-sm border border-red-200 dark:border-red-800"><PdfIcon /> PDF</button>
-              <button onClick={() => handleExport('excel')} className="flex items-center justify-center px-4 py-2 bg-green-50 text-green-700 font-semibold rounded-lg hover:bg-green-100 dark:bg-green-900/50 dark:text-green-300 dark:hover:bg-green-900 transition-all transform hover:scale-105 shadow-sm border border-green-200 dark:border-green-800"><ExcelIcon /> Excel</button>
+              
+              {/* --- Tombol Excel disembunyikan sementara dengan cara dikomentari --- */}
+              {/* <button 
+                onClick={() => handleExport('excel')} 
+                disabled
+                className="flex items-center justify-center px-4 py-2 bg-green-50 text-green-700 font-semibold rounded-lg shadow-sm border border-green-200 dark:border-green-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Fitur ini sedang dalam pengembangan"
+              >
+                <ExcelIcon /> Excel
+              </button> */}
             </div>
           </div>
         </div>
       </section>
 
-      {/* CHARTS */}
       <section className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
         <div className="lg:col-span-3 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Tren Pendapatan</h2>
@@ -191,7 +197,6 @@ export default function ReportClientComponent({ allOrders, allLaptops }: { allOr
         </div>
       </section>
 
-      {/* ORDER HISTORY */}
       <section className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4"><div><h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Riwayat Pembelian ({timeRange} Hari)</h2><p className="text-sm text-gray-500 mt-1">Menampilkan {filteredOrders.length} transaksi terakhir.</p></div><div className="relative w-full sm:max-w-xs"><input type="text" placeholder="Cari username..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500" /><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><SearchIcon /></div></div></div>
         {currentOrders.length > 0 ? (<div className="space-y-4">{currentOrders.map((order) => (<OrderRow key={order.id} order={order} />))}</div>) : (<div className="text-center py-10 text-gray-500"><p>Tidak ada pesanan yang cocok dengan kriteria Anda.</p></div>)}
@@ -201,7 +206,7 @@ export default function ReportClientComponent({ allOrders, allLaptops }: { allOr
   );
 }
 
-// Sub-Components
+// --- Sub-Components ---
 const StatCard = ({ title, value, icon }: { title: string, value: string, icon: React.ReactNode }) => (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 flex items-center space-x-4 overflow-hidden">
         <div className="flex-shrink-0 bg-gray-100 dark:bg-gray-700 p-3 rounded-full">{icon}</div>
