@@ -1,5 +1,7 @@
 // src/types.ts
 
+export type EmailStatus = 'VERIFIED' | 'PENDING_CHANGE';
+
 export interface Laptop {
   id: string;
   name: string;
@@ -41,10 +43,12 @@ export interface Profile {
   updated_at: string | null;
   username: string;
   full_name: string | null;
-  avatar_url: string | null;
+  avatar_url: string | null; // <-- Pastikan baris ini ada
   role: string;
   email: string | null;
   wallet_balance: number;
+  email_status: EmailStatus;
+  address_detail: string | null;
 }
 
 export interface ShippingAddress {
@@ -85,5 +89,5 @@ export interface Order {
     full_name: string | null;
     email: string | null;
   } | null;
-  payment_method: 'paypal' | 'wallet'; // <-- TAMBAHKAN INI
+  payment_method: 'paypal' | 'wallet';
 }

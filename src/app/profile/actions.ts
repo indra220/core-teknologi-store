@@ -1,3 +1,4 @@
+// src/app/profile/actions.ts
 'use server';
 
 import { createClient } from "@/lib/supabase/server";
@@ -10,10 +11,13 @@ type FormState = {
 };
 
 const UpdateProfileSchema = z.object({
+  full_name: z.string().min(3, "Nama Lengkap minimal 3 karakter.").optional().or(z.literal('')),
   username: z.string().min(3, "Username minimal 3 karakter."),
   email: z.string().email("Format email tidak valid."),
   newPassword: z.string().min(6, "Password baru minimal 6 karakter.").optional().or(z.literal('')),
   currentPassword: z.string().min(1, "Password saat ini wajib diisi."),
+  address_detail: z.string().optional(),
+  avatar: z.instanceof(File).optional(),
 });
 
 export async function updateProfile(prevState: FormState, formData: FormData): Promise<FormState> {
@@ -31,7 +35,15 @@ export async function updateProfile(prevState: FormState, formData: FormData): P
     return { message: errorMessage, type: 'error' };
   }
 
-  const { username, email, newPassword, currentPassword } = validatedFields.data;
+  const { 
+    full_name,
+    username, 
+    email, 
+    newPassword, 
+    currentPassword, 
+    address_detail,
+    avatar,
+  } = validatedFields.data;
 
   const { error: passwordError } = await supabase.auth.signInWithPassword({
     email: user.email,
@@ -42,21 +54,56 @@ export async function updateProfile(prevState: FormState, formData: FormData): P
     return { message: 'Password saat ini yang Anda masukkan salah.', type: 'error' };
   }
 
-  let successMessage = "Tidak ada perubahan yang disimpan.";
+  // =========================================================================
+  // <-- PERBAIKAN UTAMA: Memberikan tipe yang spesifik -->
+  const profileUpdates: {
+    full_name?: string | null;
+    username: string;
+    address_detail?: string | null;
+    avatar_url?: string;
+  } = {
+    full_name: full_name,
+    username: username,
+    address_detail: address_detail,
+  };
+  // =========================================================================
 
-  const { error: usernameError } = await supabase
+  if (avatar && avatar.size > 0) {
+    if (avatar.size > 5 * 1024 * 1024) {
+        return { message: "Ukuran file terlalu besar. Maksimal 5MB.", type: 'error' };
+    }
+
+    const fileExtension = avatar.name.split('.').pop();
+    const fileName = `${user.id}.${fileExtension}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, avatar, {
+        cacheControl: '3600',
+        upsert: true,
+      });
+
+    if (uploadError) {
+      return { message: `Gagal mengunggah avatar: ${uploadError.message}`, type: 'error' };
+    }
+
+    const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
+    profileUpdates.avatar_url = `${data.publicUrl}?t=${new Date().getTime()}`;
+  }
+
+  const { error: profileError } = await supabase
     .from('profiles')
-    .update({ username: username })
+    .update(profileUpdates)
     .eq('id', user.id);
   
-  if (usernameError) {
-    return { message: 'Gagal memperbarui username. Mungkin sudah digunakan.', type: 'error' };
+  if (profileError) {
+    return { message: 'Gagal memperbarui profil: ' + profileError.message, type: 'error' };
   }
-  successMessage = "Profil berhasil diperbarui!";
   
   const userUpdates: { email?: string; password?: string } = {};
   if (email && email !== user.email) {
     userUpdates.email = email;
+    await supabase.from('profiles').update({ email_status: 'PENDING_CHANGE' }).eq('id', user.id);
   }
   if (newPassword) {
     userUpdates.password = newPassword;
@@ -65,42 +112,24 @@ export async function updateProfile(prevState: FormState, formData: FormData): P
   if (Object.keys(userUpdates).length > 0) {
     const { error: authError } = await supabase.auth.updateUser(userUpdates);
     if (authError) {
-      return { message: 'Gagal memperbarui email/password: ' + authError.message, type: 'error' };
-    }
-    successMessage = "Profil dan info login berhasil diperbarui!";
-    if (userUpdates.email) {
-      successMessage += " Cek email baru Anda untuk verifikasi.";
+      return { message: 'Gagal memperbarui info login: ' + authError.message, type: 'error' };
     }
   }
   
   revalidatePath('/profile');
-  return { message: successMessage, type: 'success' };
+  revalidatePath('/profile/edit');
+  return { message: "Profil berhasil diperbarui!", type: 'success' };
 }
 
-/**
- * Fungsi untuk mengirim ulang email verifikasi jika ada perubahan email yang tertunda.
- */
 export async function resendVerificationEmail(_prevState: FormState, _formData: FormData): Promise<FormState> {
   const supabase = await createClient();
-
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return { message: "Pengguna tidak ditemukan.", type: "error" };
-  }
-
-  const newEmail = user.new_email;
-  if (!newEmail) {
+  if (!user || !user.new_email) {
     return { message: "Tidak ada email baru yang menunggu verifikasi.", type: "error" };
   }
-  
-  const { error } = await supabase.auth.resend({
-    type: 'email_change',
-    email: newEmail
-  });
-
+  const { error } = await supabase.auth.resend({ type: 'email_change', email: user.new_email });
   if (error) {
     return { message: "Gagal mengirim ulang email: " + error.message, type: "error" };
   }
-
-  return { message: "Email verifikasi telah dikirim ulang ke " + newEmail, type: "success" };
+  return { message: "Email verifikasi telah dikirim ulang.", type: "success" };
 }

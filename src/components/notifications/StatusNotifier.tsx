@@ -16,14 +16,16 @@ export default function StatusNotifier() {
     
     if (message === 'login_success') {
       showNotification('Login berhasil! Selamat datang kembali.', 'success');
-      // Membersihkan URL setelah notifikasi ditampilkan
       router.replace(window.location.pathname, { scroll: false });
     } else if (message === 'logout_success') {
       showNotification('Logout berhasil!', 'info');
       router.replace(window.location.pathname, { scroll: false });
+    // <-- Tambahkan blok 'else if' ini -->
+    } else if (message === 'update_success') {
+      showNotification('Profil berhasil diperbarui!', 'success');
+      router.replace(window.location.pathname, { scroll: false });
     }
   }, [searchParams, showNotification, router]);
 
-  // Komponen ini tidak me-render UI apa pun
   return null;
 }
