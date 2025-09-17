@@ -1,5 +1,4 @@
 // src/components/notifications/StatusNotifier.tsx
-
 'use client';
 
 import { useEffect } from 'react';
@@ -20,9 +19,11 @@ export default function StatusNotifier() {
     } else if (message === 'logout_success') {
       showNotification('Logout berhasil!', 'info');
       router.replace(window.location.pathname, { scroll: false });
-    // <-- Tambahkan blok 'else if' ini -->
     } else if (message === 'update_success') {
       showNotification('Profil berhasil diperbarui!', 'success');
+      router.replace(window.location.pathname, { scroll: false });
+    } else if (message === 'reset_success') { // <-- TAMBAHKAN BLOK INI
+      showNotification('Password berhasil direset! Silakan login kembali.', 'success');
       router.replace(window.location.pathname, { scroll: false });
     }
   }, [searchParams, showNotification, router]);

@@ -1,8 +1,9 @@
+// src/app/(auth)/login/page.tsx
 'use client';
 
 import { Suspense, useState, useEffect } from 'react';
 import Link from '@/components/NavigationLoader';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useSession } from '@/context/SessionContext';
 import NProgress from 'nprogress';
@@ -14,20 +15,39 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const supabase = createClient();
-  const { profile } = useSession();
+  const { profile, loading: sessionLoading } = useSession();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
+    if (searchParams.get('action') === 'clearsession') {
+      supabase.auth.signOut();
+      
+      // Kirim sinyal bahwa recovery telah berakhir
+      localStorage.setItem('auth_flow_status', JSON.stringify({ 
+        state: 'recovery_ended', 
+        timestamp: Date.now() 
+      }));
+      
+      router.replace('/login', { scroll: false });
+    }
+  }, [searchParams, supabase, router]);
+  
+  useEffect(() => {
+    if (sessionLoading) return;
     if (profile) {
       const targetUrl = profile.role === 'admin' ? '/admin' : '/';
       router.replace(targetUrl);
     }
-  }, [profile, router]);
+  }, [profile, sessionLoading, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
     NProgress.start();
+
+    // Hapus status recovery saat login normal dimulai
+    localStorage.removeItem('auth_flow_status');
 
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
@@ -53,12 +73,11 @@ function LoginForm() {
       setError('Username atau password salah.');
       NProgress.done();
     } else {
-      // --- TAMBAHKAN LOGIKA INI ---
-      // Atur waktu mulai sesi di localStorage setelah login berhasil
       localStorage.setItem('sessionStartTime', Date.now().toString());
-      localStorage.setItem('userRole', profileData.role); // Simpan juga role
-      // --- AKHIR PENAMBAHAN ---
-      router.push('/?message=login_success');
+      localStorage.setItem('userRole', profileData.role);
+      const targetUrl = profileData.role === 'admin' ? '/admin' : '/';
+      router.push(`${targetUrl}?message=login_success`);
+      router.refresh();
     }
   };
 
@@ -99,6 +118,11 @@ function LoginForm() {
             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900" 
             placeholder="Masukkan password Anda" 
           />
+          <div className="text-right mt-2">
+            <Link href="/forgot-password" className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline">
+              Lupa Password?
+            </Link>
+          </div>
         </div>
         <button type="submit" disabled={loading} className={`w-full py-3 px-4 rounded-lg font-semibold text-white transition ${loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>
             {loading ? 'Memuat...' : 'Login'}

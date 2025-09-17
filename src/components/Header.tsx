@@ -1,5 +1,7 @@
+// src/components/Header.tsx
 'use client';
 
+import { usePathname } from 'next/navigation';
 import { useState, useEffect, useRef, RefObject } from 'react';
 import Link from '@/components/NavigationLoader';
 import { useRouter } from 'next/navigation';
@@ -13,6 +15,7 @@ import { markNotificationAsRead, deleteNotification } from '@/lib/actions/notifi
 import { useSession } from '@/context/SessionContext';
 import NProgress from 'nprogress';
 
+// ... (kode ikon dan helper tidak berubah) ...
 interface Notification {
   id: string;
   message: string;
@@ -55,8 +58,10 @@ const timeAgo = (date: string) => {
   return "Baru saja";
 };
 
+
 export default function Header() {
     const { user, profile, notifications, refreshSession } = useSession();
+    const pathname = usePathname();
   
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -126,18 +131,21 @@ export default function Header() {
   const handleLogout = async () => {
     setIsDropdownOpen(false);
     NProgress.start();
-    // --- TAMBAHKAN LOGIKA INI ---
-    // Hapus data sesi dari localStorage saat logout
     localStorage.removeItem('sessionStartTime');
     localStorage.removeItem('userRole');
-    // --- AKHIR PENAMBAHAN ---
     await supabase.auth.signOut();
-    router.push('/?message=logout_success');
+    // --- PERBAIKAN DI SINI ---
+    // Gunakan window.location untuk memaksa hard refresh
+    window.location.assign('/login?message=logout_success');
   };
 
   const displayName = profile?.full_name || user?.email || '';
   const isAdmin = profile?.role === 'admin';
   const headerClasses = isScrolled ? 'bg-white shadow-md dark:bg-gray-800 dark:border-b dark:border-gray-700' : 'bg-white shadow-md dark:bg-gray-800 dark:border-b dark:border-gray-700';
+
+  if (pathname === '/reset-password') {
+    return null;
+  }
 
   return (
     <>
