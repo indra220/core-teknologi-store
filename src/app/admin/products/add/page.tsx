@@ -1,16 +1,14 @@
 // src/app/admin/products/add/page.tsx
 'use client';
 
-import { useState } from "react";
-import { useActionState } from "react";
+import { useState, useActionState, useEffect } from "react"; // <-- Impor useEffect
 import { useFormStatus } from "react-dom";
 import { addProductWithVariants } from "./actions";
-import Link from "@/components/NavigationLoader"; // Ganti Link
+import Link from "@/components/NavigationLoader";
 import CurrencyInput from '@/components/CurrencyInput';
 import { TrashIcon, PlusCircleIcon } from '@heroicons/react/24/outline';
-import NProgress from 'nprogress'; // Impor NProgress
+import NProgress from 'nprogress';
 
-// ... (Interface Variant dan SubmitButton tidak berubah) ...
 interface Variant {
   id: number;
   price: string;
@@ -39,6 +37,14 @@ export default function AddProductPage() {
     { id: Date.now(), price: '', processor: '', ram: '', storage: '', screen_size: '', stock: '0' }
   ]);
 
+  // --- PERBAIKAN TOPLOADER DI SINI ---
+  useEffect(() => {
+    if (formState?.message) {
+      NProgress.done();
+    }
+  }, [formState]);
+  // --- AKHIR PERBAIKAN ---
+
   const addVariant = () => {
     setVariants([...variants, { id: Date.now(), price: '', processor: '', ram: '', storage: '', screen_size: '', stock: '0' }]);
   };
@@ -61,7 +67,6 @@ export default function AddProductPage() {
       </header>
       
       <form action={formAction} onSubmit={() => NProgress.start()}>
-        {/* ... (Isi form tidak berubah) ... */}
         <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 space-y-6">
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Informasi Produk Dasar</h2>
           <div>

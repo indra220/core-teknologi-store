@@ -5,12 +5,13 @@ import { Profile } from "@/types";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { updateUserByAdmin, deleteUserByAdmin } from "./actions";
-import Link from "@/components/NavigationLoader"; // Ganti Link
-import { useState } from "react";
+import Link from "@/components/NavigationLoader";
+import { useState, useEffect, useRef } from "react";
 import { motion } from 'framer-motion';
-import NProgress from 'nprogress'; // Impor NProgress
+import NProgress from 'nprogress';
+import ConfirmationModal from "@/components/ConfirmationModal";
+import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
-// ... (SubmitButton and DeleteButton components remain the same) ...
 function SubmitButton({ isDisabled }: { isDisabled: boolean }) {
   const { pending } = useFormStatus();
   const disabled = pending || isDisabled;
@@ -21,19 +22,18 @@ function SubmitButton({ isDisabled }: { isDisabled: boolean }) {
   );
 }
 
-function DeleteButton({ isDisabled }: { isDisabled: boolean }) {
-  const { pending } = useFormStatus();
-  const disabled = pending || isDisabled;
+function DeleteButton({ isDisabled, onClick }: { isDisabled: boolean, onClick: () => void }) {
   return (
     <motion.button 
-      type="submit" 
-      disabled={disabled} 
-      className={`w-full sm:w-auto font-semibold px-5 py-2 rounded-lg transition duration-200 shadow-md ${disabled ? 'bg-red-300 text-white cursor-not-allowed' : 'bg-red-600 text-white'}`}
-      whileHover={!disabled ? { scale: 1.05, rotate: [0, -1.5, 1.5, -1.5, 0] } : {}}
+      type="button"
+      disabled={isDisabled} 
+      onClick={onClick}
+      className={`w-full sm:w-auto font-semibold px-5 py-2 rounded-lg transition duration-200 shadow-md ${isDisabled ? 'bg-red-300 text-white cursor-not-allowed' : 'bg-red-600 text-white'}`}
+      whileHover={!isDisabled ? { scale: 1.05, rotate: [0, -1.5, 1.5, -1.5, 0] } : {}}
       transition={{ duration: 0.3 }}
-      whileTap={!disabled ? { scale: 0.95 } : {}}
+      whileTap={!isDisabled ? { scale: 0.95 } : {}}
     >
-      {pending ? 'Menghapus...' : 'Hapus Pengguna Ini'}
+      Hapus Pengguna Ini
     </motion.button>
   );
 }
@@ -45,19 +45,42 @@ export default function EditUserForm({ user }: { user: Profile }) {
   const [deleteState, deleteAction] = useActionState(deleteUserByAdmin, initialState);
   
   const [adminPassword, setAdminPassword] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+
   const isPasswordEmpty = adminPassword.trim() === '';
   const isEditingAdmin = user.role === 'admin';
 
-  const handleConfirmDelete = (event: React.FormEvent<HTMLFormElement>) => {
-    if (window.confirm(`Anda yakin ingin menghapus pengguna ${user.username}? Aksi ini tidak bisa dibatalkan.`)) {
-      NProgress.start(); // Mulai TopLoader saat konfirmasi hapus
-    } else {
-      event.preventDefault();
+  useEffect(() => {
+    if (updateState?.message || deleteState?.message) {
+      NProgress.done();
     }
+  }, [updateState, deleteState]);
+
+  const handleConfirmDelete = () => {
+    NProgress.start();
+    formRef.current?.requestSubmit(); 
   };
 
   return (
     <>
+      <ConfirmationModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Konfirmasi Hapus Pengguna"
+        variant="danger" // <-- Menggunakan varian 'danger'
+        confirmText="Ya, Hapus Pengguna"
+        cancelText="Batal"
+        icon={<ExclamationTriangleIcon className="h-8 w-8 text-red-400" />} // Perbesar ikon
+      >
+        <p>
+          Apakah Anda yakin ingin menghapus pengguna <strong className="font-semibold text-gray-50">{user.username}</strong>?
+          <br />
+          Semua data terkait akan dihapus secara permanen dan aksi ini tidak dapat diurungkan.
+        </p>
+      </ConfirmationModal>
+
       <div className="bg-white p-8 sm:p-10 rounded-2xl shadow-xl border border-gray-100">
         <form action={updateAction} className="space-y-6" onSubmit={() => NProgress.start()}>
           <input type="hidden" name="userId" value={user.id} />
@@ -73,7 +96,6 @@ export default function EditUserForm({ user }: { user: Profile }) {
             <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-1">Password Baru (Opsional)</label>
             <input id="newPassword" type="password" name="newPassword" placeholder="Kosongkan jika tidak ingin diubah" className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500" />
           </div>
-
           <div className="border-t pt-6">
             <label htmlFor="adminPassword" className="block text-sm font-bold text-gray-800 mb-1">Password Admin Anda</label>
             <p className="text-xs text-gray-500 mb-2">Untuk menyimpan perubahan atau menghapus, masukkan password Anda.</p>
@@ -87,13 +109,11 @@ export default function EditUserForm({ user }: { user: Profile }) {
               className="w-full px-4 py-2 border border-yellow-400 rounded-lg text-gray-900 focus:ring-2 focus:ring-yellow-500" 
             />
           </div>
-
           {updateState?.message && (
             <div className={`p-3 rounded-lg text-sm ${updateState.type === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
               {updateState.message}
             </div>
           )}
-          
           <div className="flex flex-col sm:flex-row gap-4 pt-4">
             <Link href="/admin/users" className="w-full text-center py-3 px-4 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300 font-semibold transition-colors">Batal</Link>
             <SubmitButton isDisabled={isPasswordEmpty} />
@@ -105,10 +125,10 @@ export default function EditUserForm({ user }: { user: Profile }) {
         <div className="mt-10 p-8 bg-red-50 border border-red-200 rounded-2xl">
           <h3 className="text-xl font-bold text-red-800">Zona Berbahaya</h3>
           <p className="mt-2 text-sm text-red-700">Menghapus pengguna adalah aksi permanen dan tidak dapat dibatalkan.</p>
-          <form action={deleteAction} onSubmit={handleConfirmDelete} className="mt-6">
+          <form ref={formRef} action={deleteAction} className="mt-6">
             <input type="hidden" name="userId" value={user.id} />
             <input type="hidden" name="adminPassword" value={adminPassword} />
-            <DeleteButton isDisabled={isPasswordEmpty} />
+            <DeleteButton isDisabled={isPasswordEmpty} onClick={() => setIsModalOpen(true)} />
             {deleteState?.message && <p className="mt-2 text-sm text-red-700">{deleteState.message}</p>}
           </form>
         </div>

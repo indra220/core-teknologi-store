@@ -9,11 +9,12 @@ interface ConfirmationModalProps {
   onClose: () => void;
   onConfirm: () => void;
   title: string;
+  variant?: 'danger' | 'success'; // Varian untuk skema warna
   isProcessing?: boolean;
   confirmText?: string;
   cancelText?: string;
   icon?: ReactNode;
-  children: ReactNode; // Untuk deskripsi
+  children: ReactNode;
 }
 
 export default function ConfirmationModal({
@@ -21,12 +22,28 @@ export default function ConfirmationModal({
   onClose,
   onConfirm,
   title,
+  variant = 'success', // Default ke 'success'
   isProcessing = false,
   confirmText = "Ya, Lanjutkan",
   cancelText = "Batal",
   icon,
   children,
 }: ConfirmationModalProps) {
+  
+  // Skema warna berdasarkan varian
+  const colorSchemes = {
+    danger: {
+      iconBg: 'bg-red-900/50',
+      confirmButton: 'bg-red-600 hover:bg-red-700 disabled:bg-red-400',
+    },
+    success: {
+      iconBg: 'bg-green-900/50',
+      confirmButton: 'bg-green-600 hover:bg-green-700 disabled:bg-green-400',
+    }
+  };
+  
+  const scheme = colorSchemes[variant];
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -34,7 +51,7 @@ export default function ConfirmationModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 backdrop-blur-sm"
           onClick={onClose}
         >
           <motion.div
@@ -42,29 +59,29 @@ export default function ConfirmationModal({
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
             transition={{ duration: 0.2 }}
-            className="relative bg-white dark:bg-gray-800 w-full max-w-md p-6 rounded-2xl shadow-xl border dark:border-gray-700"
+            className="relative bg-gray-800 w-full max-w-md p-8 rounded-2xl shadow-xl border border-gray-700"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex flex-col items-center text-center">
               {icon && (
-                <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/50 sm:mx-0 sm:h-10 sm:w-10">
+                <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full ${scheme.iconBg}`}>
                   {icon}
                 </div>
               )}
-              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-50 mt-4">
+              <h3 className="text-2xl font-bold text-gray-50 mt-5">
                 {title}
               </h3>
-              <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              <div className="mt-3 text-base text-gray-300 max-w-sm">
                 {children}
               </div>
             </div>
 
-            <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-center sm:gap-4">
+            <div className="mt-8 grid grid-cols-2 gap-4">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={isProcessing}
-                className="mt-3 sm:mt-0 w-full rounded-md bg-white dark:bg-gray-700 px-4 py-2 font-semibold text-gray-900 dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50"
+                className="w-full rounded-lg bg-gray-600 px-5 py-3 font-semibold text-gray-200 shadow-sm hover:bg-gray-500 disabled:opacity-50 transition-colors"
               >
                 {cancelText}
               </button>
@@ -72,7 +89,7 @@ export default function ConfirmationModal({
                 type="button"
                 onClick={onConfirm}
                 disabled={isProcessing}
-                className="w-full rounded-md bg-green-600 px-4 py-2 font-semibold text-white shadow-sm hover:bg-green-700 disabled:bg-green-400"
+                className={`w-full rounded-lg px-5 py-3 font-semibold text-white shadow-sm ${scheme.confirmButton} disabled:cursor-not-allowed transition-colors`}
               >
                 {isProcessing ? 'Memproses...' : confirmText}
               </button>

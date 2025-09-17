@@ -4,14 +4,13 @@
 import { useState, useEffect } from "react";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import Link from "@/components/NavigationLoader"; // Ganti Link
+import Link from "@/components/NavigationLoader";
 import CurrencyInput from '@/components/CurrencyInput';
 import { TrashIcon, PlusCircleIcon } from '@heroicons/react/24/outline';
 import { updateProductAndVariants } from "./actions";
 import type { Product, ProductVariant } from "@/types";
-import NProgress from 'nprogress'; // Impor NProgress
+import NProgress from 'nprogress';
 
-// ... (ClientVariant and SubmitButton components remain the same) ...
 type ClientVariant = Partial<ProductVariant> & { tempId: number };
 
 function SubmitButton() {
@@ -34,6 +33,14 @@ export default function EditProductForm({ product }: { product: Product }) {
   useEffect(() => {
     setVariants(product.product_variants.map(v => ({ ...v, tempId: Math.random() })));
   }, [product]);
+
+  // --- PERBAIKAN TOPLOADER DI SINI ---
+  useEffect(() => {
+    if (formState?.message) {
+      NProgress.done();
+    }
+  }, [formState]);
+  // --- AKHIR PERBAIKAN ---
 
   const addVariant = () => {
     setVariants([...variants, {

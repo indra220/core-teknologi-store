@@ -1,3 +1,4 @@
+// src/app/admin/users/[id]/edit/actions.ts
 'use server';
 
 import { createClient } from "@/lib/supabase/server";
@@ -51,7 +52,7 @@ export async function updateUserByAdmin(prevState: FormState, formData: FormData
   // 2. Update tabel profiles (username, full_name)
   const { error: profileError } = await supabase
     .from('profiles')
-    .update({ username, full_name: fullName }) // 'username' dan 'fullName' digunakan di sini
+    .update({ username, full_name: fullName })
     .eq('id', userId);
 
   if (profileError) {
@@ -59,8 +60,9 @@ export async function updateUserByAdmin(prevState: FormState, formData: FormData
   }
 
   // 3. Jika password baru diisi, update password di auth
-  if (newPassword) { // 'newPassword' digunakan di sini
-    const { error: authError } = await supabase.auth.admin.updateUserById(
+  if (newPassword) {
+    const supabaseAdmin = await createClient(true); // Gunakan service role untuk update user
+    const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
       userId,
       { password: newPassword }
     );
@@ -75,12 +77,13 @@ export async function updateUserByAdmin(prevState: FormState, formData: FormData
   return { message: successMessage, type: 'success' };
 }
 
-// Fungsi Hapus Pengguna yang sudah aman
+// --- PERBAIKAN FUNGSI HAPUS PENGGUNA ---
 export async function deleteUserByAdmin(prevState: FormState, formData: FormData): Promise<FormState> {
-  const supabase = await createClient();
   const userId = formData.get('userId') as string;
   const adminPassword = formData.get('adminPassword') as string;
-  
+
+  // Buat client standar untuk verifikasi password admin
+  const supabase = await createClient();
   const { data: { user: adminUser } } = await supabase.auth.getUser();
   if (!adminUser || !adminUser.email) {
     return { message: 'Admin tidak ditemukan.', type: 'error' };
@@ -90,6 +93,7 @@ export async function deleteUserByAdmin(prevState: FormState, formData: FormData
     return { message: 'Password konfirmasi admin wajib diisi.', type: 'error' };
   }
 
+  // Verifikasi password admin yang sedang login
   const { error: passwordError } = await supabase.auth.signInWithPassword({
     email: adminUser.email,
     password: adminPassword,
@@ -99,7 +103,10 @@ export async function deleteUserByAdmin(prevState: FormState, formData: FormData
     return { message: 'Password konfirmasi admin Anda salah.', type: 'error' };
   }
   
-  const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
+  // Buat service client HANYA untuk operasi penghapusan
+  const supabaseAdmin = await createClient(true);
+  const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+  
   if (deleteError) {
     return { message: "Gagal menghapus pengguna: " + deleteError.message, type: 'error' };
   }
