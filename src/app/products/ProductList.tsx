@@ -4,7 +4,7 @@
 
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
+import NavigationLoader from '@/components/NavigationLoader'; // <-- Ganti Link ke NavigationLoader
 import Image from 'next/image';
 import { Product, ProductVariant } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,7 +20,7 @@ const GraphicsIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-
 const PriceIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 const ScreenSizeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-1.621-.621A3 3 0 0115 18.257V17.25m-6 0h6" /><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.5v-7.5c0-.934.716-1.687 1.66-1.744A48.52 48.52 0 0112 4.5c2.278 0 4.542.164 6.74 1.012A1.72 1.72 0 0121 7.25v7.5" /></svg>;
 
-// 1. Komponen Checkbox diubah untuk MENGHAPUS fitur 'disabled'
+// --- Sisa komponen (CheckboxItem, FilterDropdown, helpers, dll tidak berubah) ---
 const CheckboxItem = ({ id, label, checked, onChange }: { id: string; label: string; checked: boolean; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; }) => (
   <label
     htmlFor={id}
@@ -59,11 +59,8 @@ const FilterDropdown = ({ title, icon, children, selectionCount }: { title: stri
     </div>
   );
 };
-
 interface BrandWithCount { brand: string; count: number; }
 interface ProductListProps { allProducts: Product[]; allBrands: BrandWithCount[]; }
-
-// --- Helper Functions (Fungsi Bantuan) ---
 const groupProcessor = (processor: string): string => {
   const p = processor.toLowerCase();
   if (p.includes('core™ ultra 9')) return 'Intel® Core™ Ultra 9';
@@ -119,7 +116,6 @@ const groupGraphics = (productName: string, variants: ProductVariant[]): string 
   if (hasAdreno) return 'Qualcomm® Adreno™';
   return 'Integrated Graphics';
 };
-// 2. Tambahkan helper function untuk Harga dan Ukuran Layar
 const groupPrice = (price: number): string | null => {
   if (price >= 0 && price <= 10000000) return '0-10000000';
   if (price > 10000000 && price <= 20000000) return '10000000-20000000';
@@ -137,13 +133,10 @@ const groupScreenSize = (screenSize: string | null): string | null => {
   if (sizeValue > 16) return '>16';
   return null;
 };
-
-// --- Static Categories (Kategori Statis) ---
 const STATIC_PROCESSOR_CATEGORIES = [ 'Intel® Core™ i3', 'Intel® Core™ i5', 'Intel® Core™ i7', 'Intel® Core™ i9', 'Intel® Core™ Ultra 5', 'Intel® Core™ Ultra 7', 'Intel® Core™ Ultra 9', 'AMD Ryzen™ 3', 'AMD Ryzen™ 5', 'AMD Ryzen™ 7', 'AMD Ryzen™ 9', 'AMD Ryzen™ AI 9', 'Qualcomm Snapdragon® X Elite', 'Qualcomm Snapdragon® X Plus' ];
 const STATIC_RAM_CATEGORIES = ['4GB', '8GB', '16GB', '32GB'];
 const STATIC_STORAGE_CATEGORIES = ['Less than 256GB', '256GB - 512GB', '1TB and up'];
 const STATIC_GRAPHICS_CATEGORIES = ['Integrated Graphics', 'NVIDIA® GeForce®', 'NVIDIA® GeForce® RTX™', 'AMD Radeon Vega', 'Qualcomm® Adreno™'];
-// 3. Definisikan kategori statis untuk Harga dan Ukuran Layar
 const PRICE_RANGE_MAP = {
   '0-10000000': 'Di bawah Rp 10 jt',
   '10000000-20000000': 'Rp 10 jt - Rp 20 jt',
@@ -157,7 +150,6 @@ const SCREEN_SIZE_MAP = {
   '>16': 'Lebih dari 16"',
 };
 const STATIC_SCREEN_SIZES = Object.keys(SCREEN_SIZE_MAP);
-
 
 export default function ProductList({ allProducts, allBrands }: ProductListProps) {
   const searchParams = useSearchParams();
@@ -182,7 +174,6 @@ export default function ProductList({ allProducts, allBrands }: ProductListProps
     setSortOrder('default');
   };
 
-  // 4. Logika penghitungan diperbarui untuk mencakup semua kategori
   const filterCounts = useMemo(() => {
     const processorCounts = new Map<string, number>();
     const ramCounts = new Map<string, number>();
@@ -228,7 +219,6 @@ export default function ProductList({ allProducts, allBrands }: ProductListProps
     return { processorCounts, ramCounts, storageCounts, graphicsCounts, priceCounts, screenSizeCounts };
   }, [allProducts]);
 
-  // Logika filter produk (tidak ada perubahan)
   const filteredAndSortedProducts = useMemo(() => {
     let products = [...allProducts];
 
@@ -275,7 +265,6 @@ export default function ProductList({ allProducts, allBrands }: ProductListProps
             </button>
           </div>
           
-          {/* 5. Render semua filter dropdown dengan prop 'disabled' dihapus */}
           <FilterDropdown title="Brand" icon={<BrandIcon/>} selectionCount={selectedBrands.length}>
             {allBrands.map(({ brand, count }) => (
               <CheckboxItem key={brand} id={brand} label={`${brand} (${count})`} checked={selectedBrands.includes(brand)} onChange={() => handleCheckboxChange(brand, selectedBrands, setSelectedBrands)} />
@@ -347,13 +336,15 @@ export default function ProductList({ allProducts, allBrands }: ProductListProps
 
               return (
                 <div key={product.id} className="group bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 border dark:border-gray-700 flex flex-col">
-                  <Link href={`/laptop/${product.id}`} className="block relative aspect-video overflow-hidden">
+                  {/* --- PERBAIKAN TOPLOADER DI SINI (1) --- */}
+                  <NavigationLoader href={`/laptop/${product.id}`} className="block relative aspect-video overflow-hidden">
                     <Image src={product.image_url || '/placeholder.png'} alt={product.name} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="(max-width: 768px) 50vw, 33vw"/>
-                  </Link>
+                  </NavigationLoader>
                   <div className="p-5 flex flex-col flex-grow">
                     <p className="text-gray-500 dark:text-gray-400 text-sm">{product.brand}</p>
                     <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 truncate mt-1 flex-grow">
-                      <Link href={`/laptop/${product.id}`} className="hover:text-blue-600 dark:hover:text-blue-400">{product.name}</Link>
+                      {/* --- PERBAIKAN TOPLOADER DI SINI (2) --- */}
+                      <NavigationLoader href={`/laptop/${product.id}`} className="hover:text-blue-600 dark:hover:text-blue-400">{product.name}</NavigationLoader>
                     </h3>
                     <p className="text-2xl font-extrabold text-blue-700 dark:text-blue-400 mt-4">
                       {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(displayPrice)}

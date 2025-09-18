@@ -60,29 +60,42 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, [supabase]);
 
+  // --- PERBAIKAN UTAMA PADA LOGIKA SESI EXPIRE ---
   useEffect(() => {
-    const events = ['mousemove', 'keydown', 'mousedown', 'touchstart'];
-    const resetTimer = () => { if (localStorage.getItem('sessionStartTime')) localStorage.setItem('sessionStartTime', Date.now().toString()) };
-    events.forEach(event => window.addEventListener(event, resetTimer));
     const checkSessionTimeout = async () => {
       const sessionStart = localStorage.getItem('sessionStartTime');
       const userRole = localStorage.getItem('userRole');
+
       if (sessionStart && userRole) {
         const now = Date.now();
         const startTime = parseInt(sessionStart, 10);
-        const timeoutDuration = userRole === 'admin' ? 24 * 60 * 60 * 1000 : 2 * 60 * 60 * 1000;
+        
+        // Tentukan durasi absolut sesi
+        const timeoutDuration = userRole === 'admin' 
+          ? 24 * 60 * 60 * 1000  // 24 jam untuk admin
+          : 2 * 60 * 60 * 1000;   // 2 jam untuk user
+
         if (now - startTime > timeoutDuration) {
           alert('Sesi Anda telah berakhir. Silakan login kembali.');
           await supabase.auth.signOut();
-          router.push('/login');
+          // Hapus item localStorage setelah signOut
           localStorage.removeItem('sessionStartTime');
           localStorage.removeItem('userRole');
+          router.push('/login');
         }
       }
     };
+
+    // 1. Jalankan pengecekan *seketika* saat komponen dimuat
+    checkSessionTimeout();
+
+    // 2. Atur interval untuk pengecekan berkala (setiap menit)
     const intervalId = setInterval(checkSessionTimeout, 60 * 1000);
+
+    // 3. Logika untuk reset timer pada aktivitas pengguna (sliding session) DIHAPUS
+    
+    // Bersihkan interval saat komponen dilepas
     return () => {
-      events.forEach(event => window.removeEventListener(event, resetTimer));
       clearInterval(intervalId);
     };
   }, [supabase, router]);
@@ -91,14 +104,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => fetchSessionData(session?.user ?? null));
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // --- PERBAIKAN UTAMA: Cek localStorage secara langsung ---
+      // Logika ini untuk mencegah masalah reset password, sudah benar
       const authFlowStatusRaw = localStorage.getItem('auth_flow_status');
       if (authFlowStatusRaw) {
         try {
           const authFlowStatus = JSON.parse(authFlowStatusRaw);
-          const isRecent = (Date.now() - authFlowStatus.timestamp) < 10 * 60 * 1000; // 10 menit
-
-          // Jika statusnya adalah recovery_started dan masih baru, abaikan event SIGNED_IN
+          const isRecent = (Date.now() - authFlowStatus.timestamp) < 10 * 60 * 1000;
           if (authFlowStatus.state === 'recovery_started' && isRecent && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
             return;
           }
@@ -106,7 +117,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           console.error(e);
         }
       }
-      
       fetchSessionData(session?.user ?? null);
     });
 

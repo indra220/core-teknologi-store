@@ -1,39 +1,47 @@
 // src/app/admin/users/UserList.tsx
 'use client';
 
-import { useState, useMemo } from "react";
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Profile } from "@/types";
-import Link from "@/components/NavigationLoader"; // <-- PERBAIKAN DI SINI
+import Link from "@/components/NavigationLoader";
+import PaginationControls from '@/components/PaginationControls'; // <-- Impor komponen baru
 
-// --- Komponen & Ikon ---
+// --- Komponen & Ikon (tidak berubah) ---
 const Avatar = ({ name }: { name: string }) => {
   const initial = name ? name.charAt(0).toUpperCase() : '?';
   const colorIndex = name ? name.charCodeAt(0) % 5 : 0;
   const colors = [ 'bg-blue-100 text-blue-800', 'bg-green-100 text-green-800', 'bg-yellow-100 text-yellow-800', 'bg-red-100 text-red-800', 'bg-indigo-100 text-indigo-800' ];
   return ( <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${colors[colorIndex]}`}>{initial}</div> );
 };
-const ChevronLeftIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>;
-const ChevronRightIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>;
 const SearchIcon = () => <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>;
 // --- END Komponen & Ikon ---
 
-export default function UserList({ profiles }: { profiles: Profile[] }) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const usersPerPage = 5;
+interface UserListProps {
+  profiles: Profile[];
+  currentPage: number;
+  totalPages: number;
+  totalUsers: number;
+  itemsPerPage: number;
+}
 
-  const filteredProfiles = useMemo(() => 
-    profiles.filter(profile =>
-      profile.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      profile.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      profile.username.toLowerCase().includes(searchTerm.toLowerCase())
-    ), [profiles, searchTerm]);
+export default function UserList({ profiles, currentPage, totalPages, totalUsers, itemsPerPage }: UserListProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const searchTerm = searchParams.get('search') || '';
 
-  const totalPages = Math.ceil(filteredProfiles.length / usersPerPage);
-  const currentProfiles = filteredProfiles.slice((currentPage - 1) * usersPerPage, currentPage * usersPerPage);
-
-  const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
-  const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
+  const handleSearch = (term: string) => {
+    const current = new URLSearchParams(Array.from(searchParams.entries()));
+    if (term) {
+      current.set('search', term);
+    } else {
+      current.delete('search');
+    }
+    current.set('page', '1'); // Reset ke halaman pertama saat mencari
+    const search = current.toString();
+    const query = search ? `?${search}` : '';
+    router.push(`${pathname}${query}`);
+  };
 
   return (
     <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl border border-gray-100">
@@ -42,9 +50,9 @@ export default function UserList({ profiles }: { profiles: Profile[] }) {
         <div className="relative w-full sm:max-w-xs">
           <input 
             type="text" 
-            placeholder="Cari pengguna..."
-            value={searchTerm}
-            onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+            placeholder="Cari nama, email, username..."
+            defaultValue={searchTerm}
+            onChange={(e) => handleSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-indigo-500"
           />
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><SearchIcon /></div>
@@ -62,8 +70,8 @@ export default function UserList({ profiles }: { profiles: Profile[] }) {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {currentProfiles.length > 0 ? (
-              currentProfiles.map((profile: Profile) => (
+            {profiles.length > 0 ? (
+              profiles.map((profile: Profile) => (
                 <tr key={profile.id} className="hover:bg-indigo-50/50">
                   <td className="px-6 py-4 whitespace-nowrap"><div className="flex items-center"><div className="flex-shrink-0"><Avatar name={profile.full_name || profile.username} /></div><div className="ml-4"><div className="text-sm font-bold text-gray-900">{profile.full_name || 'Tanpa Nama'}</div><div className="text-xs text-gray-500">{profile.email}</div></div></div></td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-mono">{profile.username}</td>
@@ -78,17 +86,12 @@ export default function UserList({ profiles }: { profiles: Profile[] }) {
         </table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="mt-6 flex items-center justify-between border-t pt-5">
-          <button onClick={prevPage} disabled={currentPage === 1} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">
-            <ChevronLeftIcon /><span>Sebelumnya</span>
-          </button>
-          <span className="text-sm text-gray-700">Halaman <span className="font-bold">{currentPage}</span> dari <span className="font-bold">{totalPages}</span></span>
-          <button onClick={nextPage} disabled={currentPage === totalPages} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">
-            <span>Berikutnya</span><ChevronRightIcon />
-          </button>
-        </div>
-      )}
+      <PaginationControls
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={totalUsers}
+        itemsPerPage={itemsPerPage}
+      />
     </div>
   );
 }

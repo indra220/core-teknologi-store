@@ -2,7 +2,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Image from "next/image";
-import Link from "next/link";
+import NavigationLoader from "@/components/NavigationLoader";
 import ProductDetailClient from "./ProductDetailClient";
 import { Suspense } from "react";
 import type { Product } from "@/types";
@@ -10,7 +10,6 @@ import type { Product } from "@/types";
 export const runtime = 'edge';
 export const revalidate = 3600;
 
-// Skeleton component (tidak berubah)
 function ProductDetailSkeleton() {
   return (
     <div className="bg-white dark:bg-gray-800 p-6 md:p-12 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 animate-pulse">
@@ -31,8 +30,6 @@ function ProductDetailSkeleton() {
   );
 }
 
-// PERBAIKAN 1: Komponen ini sekarang hanya bertugas menampilkan data (UI Component)
-// Logika pengambilan data (fetch) sudah dipindahkan.
 function ProductDetails({ product }: { product: Product }) {
   return (
      <div className="bg-white dark:bg-gray-800 p-6 md:p-12 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
@@ -56,25 +53,25 @@ function ProductDetails({ product }: { product: Product }) {
           <p className="mt-6 text-base text-gray-600 dark:text-gray-300 leading-relaxed max-w-prose">
             {product.description || 'Tidak ada deskripsi rinci untuk produk ini.'}
           </p>
-          {/* Komponen Client tetap menerima data product */}
           <ProductDetailClient product={product} />
         </div>
       </div>
   );
 }
 
-// PERBAIKAN 2: Komponen Halaman Utama (Page Component) sekarang yang bertugas mengambil data
-export default async function DetailLaptopPage({ params }: { params: { id: string } }) {
+// --- PERBAIKAN ERROR DI SINI ---
+// Destrukturisasi 'params' untuk mendapatkan 'id' langsung di dalam argumen fungsi.
+export default async function DetailLaptopPage({ params: { id } }: { params: { id: string } }) {
   
-  // Logika pengambilan data dipindahkan ke sini
   const supabase = await createClient();
+
   const { data: product } = await supabase
     .from('products')
     .select(`
       *,
       product_variants ( * )
     `)
-    .eq('id', params.id)
+    .eq('id', id) // <-- Sekarang 'id' bisa langsung digunakan
     .single<Product>();
 
   if (!product || product.product_variants.length === 0) {
@@ -84,16 +81,15 @@ export default async function DetailLaptopPage({ params }: { params: { id: strin
   return (
     <div className="max-w-6xl mx-auto py-8 sm:py-12 px-4">
       <div className="mb-8">
-        <Link 
+        <NavigationLoader 
           href="/products"
           className="inline-flex items-center gap-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 font-semibold px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
           Kembali ke Daftar Produk
-        </Link>
+        </NavigationLoader>
       </div>
       <Suspense fallback={<ProductDetailSkeleton />}>
-        {/* Komponen ProductDetails sekarang menerima 'product' yang sudah di-fetch */}
         <ProductDetails product={product} />
       </Suspense>
     </div>
