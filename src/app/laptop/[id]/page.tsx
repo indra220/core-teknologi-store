@@ -6,9 +6,9 @@ import NavigationLoader from "@/components/NavigationLoader";
 import ProductDetailClient from "./ProductDetailClient";
 import { Suspense } from "react";
 import type { Product } from "@/types";
+import { unstable_cache } from "next/cache";
 
 export const runtime = 'edge';
-export const revalidate = 3600;
 
 function ProductDetailSkeleton() {
   return (
@@ -59,22 +59,30 @@ function ProductDetails({ product }: { product: Product }) {
   );
 }
 
-// --- PERBAIKAN ERROR DI SINI ---
-// Destrukturisasi 'params' untuk mendapatkan 'id' langsung di dalam argumen fungsi.
+// Fungsi cache menerima supabase client dan ID sebagai argumen
+const getCachedProductById = unstable_cache(
+  async (supabase, id: string) => {
+    const { data, error } = await supabase
+      .from('products')
+      .select(`*, product_variants ( * )`)
+      .eq('id', id)
+      .single();
+    return { product: data as Product | null, error };
+  },
+  ['product-details'],
+  {
+    // Tagging dinamis berdasarkan ID
+    tags: ['products'],
+  }
+);
+
 export default async function DetailLaptopPage({ params: { id } }: { params: { id: string } }) {
-  
+  // Buat client di luar cache
   const supabase = await createClient();
+  // Panggil fungsi cache dengan argumen
+  const { product, error } = await getCachedProductById(supabase, id);
 
-  const { data: product } = await supabase
-    .from('products')
-    .select(`
-      *,
-      product_variants ( * )
-    `)
-    .eq('id', id) // <-- Sekarang 'id' bisa langsung digunakan
-    .single<Product>();
-
-  if (!product || product.product_variants.length === 0) {
+  if (error || !product || product.product_variants.length === 0) {
     notFound();
   }
 

@@ -2,22 +2,42 @@
 import { createClient } from "@/lib/supabase/server";
 import { Order, Laptop } from "@/types";
 import ReportClientComponent from "./ReportClientComponent";
+import { unstable_cache } from "next/cache";
 
-export const revalidate = 0;
+// Fungsi cache untuk mengambil data pesanan laporan
+const getCachedAdminReports = unstable_cache(
+  async (supabase) => {
+    const { data, error } = await supabase
+      .from('orders')
+      .select(`*, profiles ( username ), order_items ( * )`)
+      .eq('status', 'Selesai')
+      .order('created_at', { ascending: false });
+    return { orders: data as Order[] | null, error };
+  },
+  ['admin-reports-data'], // Kunci cache
+  {
+    tags: ['admin-reports', 'orders'], // Tag revalidasi
+  }
+);
+
+// Fungsi cache untuk mengambil data brand laptop
+const getCachedLaptopBrands = unstable_cache(
+  async (supabase) => {
+    const { data, error } = await supabase.from('laptops').select('brand');
+    return { laptops: data as Laptop[] | null, error };
+  },
+  ['laptop-brands-data'], // Kunci cache
+  {
+    tags: ['products'], // Tag revalidasi
+  }
+);
 
 export default async function AdminReportPage() {
   const supabase = await createClient();
 
-  // --- Kueri diperbarui untuk hanya mengambil pesanan 'Selesai' ---
-  const { data: orders, error: ordersError } = await supabase
-    .from('orders')
-    .select(`*, profiles ( username ), order_items ( * )`)
-    .eq('status', 'Selesai') // <-- FILTER DI SINI
-    .order('created_at', { ascending: false });
-
-  const { data: laptops, error: laptopsError } = await supabase
-    .from('laptops')
-    .select('brand');
+  // Panggil kedua fungsi cache secara terpisah
+  const { orders, error: ordersError } = await getCachedAdminReports(supabase);
+  const { laptops, error: laptopsError } = await getCachedLaptopBrands(supabase);
 
   if (ordersError || laptopsError) {
     return <div className="text-center py-20 text-red-500">Gagal memuat data laporan: {ordersError?.message || laptopsError?.message}</div>;
@@ -31,8 +51,8 @@ export default async function AdminReportPage() {
       </header>
       
       <ReportClientComponent 
-        allOrders={orders as Order[]} 
-        allLaptops={laptops as Laptop[]} 
+        allOrders={orders || []} 
+        allLaptops={laptops || []} 
       />
     </div>
   );

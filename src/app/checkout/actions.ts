@@ -2,9 +2,7 @@
 'use server';
 
 import { createClient } from "@/lib/supabase/server";
-import { revalidatePath } from "next/cache";
-// HAPUS: 'redirect' tidak lagi dibutuhkan di sini
-// import { redirect } from "next/navigation";
+import { revalidateTag } from "next/cache";
 import { CartItem } from "@/context/CartContext";
 
 type ActionResult = {
@@ -57,10 +55,10 @@ export async function createOrderFromWallet(cartItems: CartItem[]): Promise<Acti
     link: '/orders',
   });
 
-  revalidatePath('/orders');
-  revalidatePath('/', 'layout');
+  revalidateTag(`orders/${user.id}`);
+  revalidateTag('admin-orders');
+  revalidateTag('notifications');
+  revalidateTag('dashboard-stats');
   
-  // HAPUS 'redirect' dan kembalikan status sukses
-  // redirect('/orders?status=success'); 
   return { success: true, message: "Pembayaran berhasil! Pesanan Anda sedang diproses." };
 }

@@ -2,7 +2,7 @@
 'use server';
 
 import { createClient } from "@/lib/supabase/server";
-import { revalidatePath } from "next/cache";
+import { revalidateTag } from "next/cache";
 
 type ActionResult = {
   success: boolean;
@@ -51,8 +51,11 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
       link: '/orders',
   });
 
-  revalidatePath('/orders');
-  revalidatePath('/', 'layout');
+  revalidateTag(`orders/${user.id}`);
+  revalidateTag('admin-orders');
+  revalidateTag('notifications');
+  revalidateTag('dashboard-stats');
+  
   return { success: true, message: "Pesanan berhasil dibatalkan. Saldo telah masuk ke dompet Anda." };
 }
 
@@ -105,8 +108,6 @@ export async function confirmOrderReceived(orderId: string): Promise<ActionResul
             .eq('role', 'admin');
 
         if (admins && admins.length > 0) {
-            // --- PERBAIKAN DI SINI ---
-            // Mengakses elemen pertama dari array 'profiles' sebelum mengambil 'username'
             const customerUsername = Array.isArray(order.profiles) 
                 ? order.profiles[0]?.username 
                 : order.profiles?.username || 'Seorang pelanggan';
@@ -122,10 +123,11 @@ export async function confirmOrderReceived(orderId: string): Promise<ActionResul
         console.error("Gagal mengirim notifikasi ke admin:", e);
     }
 
-    revalidatePath('/orders');
-    revalidatePath('/admin/report');
-    revalidatePath('/admin/orders');
-    revalidatePath('/', 'layout');
+    revalidateTag(`orders/${user.id}`);
+    revalidateTag('admin-orders');
+    revalidateTag('admin-reports');
+    revalidateTag('notifications');
+    revalidateTag('dashboard-stats');
 
     return { success: true, message: "Pesanan telah diselesaikan. Terima kasih telah berbelanja!" };
 }

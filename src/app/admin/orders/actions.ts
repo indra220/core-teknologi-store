@@ -2,7 +2,7 @@
 'use server';
 
 import { createClient } from "@/lib/supabase/server";
-import { revalidatePath } from "next/cache";
+import { revalidateTag } from "next/cache";
 import { OrderStatus } from "@/types";
 
 type ActionResult = {
@@ -55,7 +55,10 @@ export async function updateOrderStatus(prevState: ActionResult, formData: FormD
     });
   }
 
-  revalidatePath('/admin/orders');
-  revalidatePath('/orders');
+  revalidateTag('admin-orders');
+  revalidateTag(`orders/${userId}`);
+  revalidateTag('notifications');
+  revalidateTag('dashboard-stats');
+  
   return { success: true, message: "Status pesanan berhasil diperbarui." };
 }

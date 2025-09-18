@@ -2,8 +2,7 @@
 'use server';
 
 import { createClient } from "@/lib/supabase/server";
-import { revalidatePath } from "next/cache";
-// 'redirect' yang tidak terpakai telah dihapus dari import ini.
+import { revalidateTag } from "next/cache";
 
 type FormState = {
   message: string | null;
@@ -43,8 +42,6 @@ export async function updateProductAndVariants(prevState: FormState, formData: F
   if (productError) {
     return { message: "Gagal memperbarui produk dasar: " + productError.message, type: 'error' };
   }
-
-  // Variabel 'existingVariants' dan 'newVariants' yang tidak terpakai telah dihapus.
   
   // 2. Update atau Insert (Upsert) varian yang ada dan baru
   if (variants.length > 0) {
@@ -78,7 +75,9 @@ export async function updateProductAndVariants(prevState: FormState, formData: F
     }
   }
 
-  revalidatePath('/admin/products');
-  revalidatePath(`/admin/products/${productId}/edit`);
+  revalidateTag('products');
+  revalidateTag(`products/${productId}`);
+  revalidateTag('dashboard-stats');
+  
   return { message: 'Produk dan varian berhasil diperbarui!', type: 'success' };
 }

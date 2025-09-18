@@ -1,21 +1,32 @@
 // src/components/notifications/NotificationBell.tsx
 import { createClient } from '@/lib/supabase/server';
 import NotificationUI from './NotificationUI';
+import { unstable_cache } from 'next/cache';
+
+const getCachedNotifications = unstable_cache(
+  async (supabase, userId: string) => {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    return { notifications: data, error };
+  },
+  ['user-notifications'],
+  {
+    tags: ['notifications'],
+  }
+);
 
 export default async function NotificationBell() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    return null; // Jangan tampilkan apa pun jika tidak ada pengguna
+    return null;
   }
 
-  // Pengambilan data sekarang terjadi di Server Component
-  const { data: notifications } = await supabase
-    .from('notifications')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
+  const { notifications } = await getCachedNotifications(supabase, user.id);
 
   return <NotificationUI initialNotifications={notifications || []} />;
 }

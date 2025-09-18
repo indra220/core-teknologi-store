@@ -2,9 +2,23 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { Order } from "@/types";
-import OrderClientPage from "./OrderClientPage"; // <-- IMPOR KOMPONEN KLIEN BARU
+import OrderClientPage from "./OrderClientPage";
+import { unstable_cache } from "next/cache";
 
-export const revalidate = 0; // Selalu ambil data terbaru
+const getCachedUserOrders = unstable_cache(
+  async (supabase, userId: string) => {
+    const { data, error } = await supabase
+      .from('orders')
+      .select(`*, payment_method, order_items (*, products (name, image_url))`)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    return { orders: data as Order[] | null, error };
+  },
+  ['user-orders'],
+  {
+    tags: ['orders'],
+  }
+);
 
 export default async function MyOrdersPage() {
   const supabase = await createClient();
@@ -14,11 +28,7 @@ export default async function MyOrdersPage() {
     redirect('/login');
   }
 
-  const { data: orders, error } = await supabase
-    .from('orders')
-    .select(`*, payment_method, order_items (*, products (name, image_url))`)
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
+  const { orders, error } = await getCachedUserOrders(supabase, user.id);
 
   if (error) {
     return <div className="text-center py-10 text-red-500">Gagal memuat riwayat pesanan.</div>;
@@ -31,7 +41,7 @@ export default async function MyOrdersPage() {
         <p className="mt-2 text-lg text-gray-600 dark:text-gray-300">Lacak dan kelola semua transaksi Anda di sini.</p>
       </header>
 
-      <OrderClientPage allOrders={orders as Order[]} />
+      <OrderClientPage allOrders={orders || []} />
     </div>
   );
 }

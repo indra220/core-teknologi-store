@@ -2,7 +2,7 @@
 'use server';
 
 import { createClient } from "@/lib/supabase/server";
-import { revalidatePath } from "next/cache";
+import { revalidateTag } from "next/cache";
 import { z } from 'zod';
 
 type FormState = {
@@ -54,8 +54,6 @@ export async function updateProfile(prevState: FormState, formData: FormData): P
     return { message: 'Password saat ini yang Anda masukkan salah.', type: 'error' };
   }
 
-  // =========================================================================
-  // <-- PERBAIKAN UTAMA: Memberikan tipe yang spesifik -->
   const profileUpdates: {
     full_name?: string | null;
     username: string;
@@ -66,7 +64,6 @@ export async function updateProfile(prevState: FormState, formData: FormData): P
     username: username,
     address_detail: address_detail,
   };
-  // =========================================================================
 
   if (avatar && avatar.size > 0) {
     if (avatar.size > 5 * 1024 * 1024) {
@@ -116,8 +113,7 @@ export async function updateProfile(prevState: FormState, formData: FormData): P
     }
   }
   
-  revalidatePath('/profile');
-  revalidatePath('/profile/edit');
+  revalidateTag('profile');
   return { message: "Profil berhasil diperbarui!", type: 'success' };
 }
 

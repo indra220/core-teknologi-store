@@ -2,7 +2,7 @@
 'use server';
 
 import { createClient } from "@/lib/supabase/server";
-import { revalidatePath } from "next/cache";
+import { revalidateTag } from "next/cache";
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
 
@@ -72,8 +72,8 @@ export async function updateUserByAdmin(prevState: FormState, formData: FormData
     successMessage = "Profil dan password pengguna berhasil diperbarui.";
   }
 
-  revalidatePath('/admin/users');
-  revalidatePath(`/admin/users/${userId}/edit`);
+  revalidateTag('users');
+  revalidateTag(`users/${userId}`);
   return { message: successMessage, type: 'success' };
 }
 
@@ -111,6 +111,7 @@ export async function deleteUserByAdmin(prevState: FormState, formData: FormData
     return { message: "Gagal menghapus pengguna: " + deleteError.message, type: 'error' };
   }
 
-  revalidatePath('/admin/users');
+  revalidateTag('users');
+  revalidateTag('dashboard-stats');
   redirect('/admin/users');
 }

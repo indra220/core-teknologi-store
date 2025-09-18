@@ -1,53 +1,72 @@
 // src/app/page.tsx
 import { createClient } from "@/lib/supabase/server";
-import Link from '@/components/NavigationLoader'; // Ganti ke NavigationLoader
+import Link from '@/components/NavigationLoader';
 import Image from 'next/image';
 import { Product } from "@/types";
-import { redirect } from 'next/navigation'; // Impor redirect
+import { redirect } from 'next/navigation';
+import { unstable_cache } from "next/cache"; // <-- Impor unstable_cache
 
 export const runtime = 'edge';
-export const revalidate = 3600;
 
-async function getBestSellingProducts(limit = 4): Promise<Product[]> {
-  const supabase = await createClient();
-  const { data: orderItems, error: orderItemsError } = await supabase
-    .from('order_items')
-    .select('product_id, quantity');
-  if (orderItemsError || !orderItems) {
-    console.error("Gagal mengambil data pesanan:", orderItemsError);
-    return [];
-  }
-  const productSales = orderItems.reduce((acc, item) => {
-    if (item.product_id) {
-      acc[item.product_id] = (acc[item.product_id] || 0) + item.quantity;
+type OrderItemSummary = {
+  product_id: string;
+  quantity: number;
+};
+
+// Bungkus keseluruhan logika fetching dalam satu fungsi cache
+const getCachedBestSellingProducts = unstable_cache(
+  async (limit: number) => {
+    const supabase = await createClient();
+    const { data: orderItems, error: orderItemsError } = await supabase
+      .from('order_items')
+      .select('product_id, quantity');
+      
+    if (orderItemsError || !orderItems) {
+      console.error("Gagal mengambil data pesanan:", orderItemsError);
+      return [];
     }
-    return acc;
-  }, {} as Record<string, number>);
-  const topProductIds = Object.entries(productSales)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, limit)
-    .map(([id]) => id);
-  if (topProductIds.length === 0) {
-    const { data: latestProducts } = await supabase
+
+    const productSales = (orderItems as OrderItemSummary[]).reduce((acc: Record<string, number>, item: OrderItemSummary) => {
+      if (item.product_id) {
+        acc[item.product_id] = (acc[item.product_id] || 0) + item.quantity;
+      }
+      return acc;
+    }, {});
+
+    const topProductIds = Object.entries(productSales)
+      .sort(([, a]: [string, number], [, b]: [string, number]) => b - a)
+      .slice(0, limit)
+      .map(([id]) => id);
+
+    if (topProductIds.length === 0) {
+      const { data: latestProducts } = await supabase
+        .from('products')
+        .select(`*, product_variants(price)`)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      return latestProducts || [];
+    }
+
+    const { data: bestSellers, error: bestSellersError } = await supabase
       .from('products')
       .select(`*, product_variants(price)`)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-    return latestProducts || [];
+      .in('id', topProductIds);
+
+    if (bestSellersError) {
+      console.error("Gagal mengambil produk terlaris:", bestSellersError);
+      return [];
+    }
+    
+    return bestSellers.sort((a: Product, b: Product) => productSales[b.id] - productSales[a.id]);
+  },
+  ['best-selling-products'], // Kunci cache unik
+  {
+    tags: ['products'], // Tag untuk revalidasi
   }
-  const { data: bestSellers, error: bestSellersError } = await supabase
-    .from('products')
-    .select(`*, product_variants(price)`)
-    .in('id', topProductIds);
-  if (bestSellersError) {
-    console.error("Gagal mengambil produk terlaris:", bestSellersError);
-    return [];
-  }
-  return bestSellers.sort((a, b) => productSales[b.id] - productSales[a.id]);
-}
+);
+
 
 export default async function HomePage() {
-  // --- LOGIKA BARU UNTUK REDIRECT ADMIN ---
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -59,12 +78,11 @@ export default async function HomePage() {
       .single();
 
     if (profile?.role === 'admin') {
-      redirect('/admin'); // Jika admin, langsung redirect ke dashboard
+      redirect('/admin');
     }
   }
-  // --- AKHIR LOGIKA BARU ---
 
-  const products = await getBestSellingProducts(4);
+  const products = await getCachedBestSellingProducts(4);
 
   return (
     <section className="py-8">

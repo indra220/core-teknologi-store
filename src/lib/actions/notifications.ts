@@ -2,7 +2,7 @@
 'use server';
 
 import { createClient } from "@/lib/supabase/server";
-import { revalidatePath } from "next/cache";
+import { revalidateTag } from "next/cache";
 
 type Notification = {
   id: string;
@@ -37,22 +37,10 @@ export async function markNotificationAsRead(notificationId: string): Promise<Ac
     return { success: false, error: 'Gagal memperbarui notifikasi di database.' };
   }
   
-  const { data: latestNotifications, error: fetchError } = await supabase
-    .from('notifications')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
-
-  if (fetchError) {
-    console.error('Gagal mengambil notifikasi terbaru:', fetchError);
-    return { success: false, error: 'Gagal mengambil data notifikasi terbaru.' };
-  }
-
-  revalidatePath('/', 'layout'); 
-  return { success: true, notifications: latestNotifications as Notification[] };
+  revalidateTag('notifications'); 
+  return { success: true };
 }
 
-// --- FUNGSI BARU UNTUK MENGHAPUS NOTIFIKASI ---
 export async function deleteNotification(notificationId: string): Promise<ActionResult> {
   const supabase = await createClient();
 
@@ -61,8 +49,6 @@ export async function deleteNotification(notificationId: string): Promise<Action
     return { success: false, error: 'Pengguna tidak terautentikasi.' };
   }
 
-  // RLS yang sudah kita buat akan menangani keamanan.
-  // Kebijakan tersebut memastikan hanya pemilik notifikasi atau admin yang bisa menghapus.
   const { error: deleteError } = await supabase
     .from('notifications')
     .delete()
@@ -73,18 +59,6 @@ export async function deleteNotification(notificationId: string): Promise<Action
     return { success: false, error: 'Gagal menghapus notifikasi di database.' };
   }
 
-  // Ambil daftar notifikasi terbaru untuk dikembalikan ke client
-  const { data: latestNotifications, error: fetchError } = await supabase
-    .from('notifications')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
-  
-  if (fetchError) {
-    revalidatePath('/', 'layout');
-    return { success: true, notifications: [] };
-  }
-
-  revalidatePath('/', 'layout');
-  return { success: true, notifications: latestNotifications as Notification[] };
+  revalidateTag('notifications');
+  return { success: true };
 }

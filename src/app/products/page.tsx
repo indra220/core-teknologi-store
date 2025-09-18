@@ -2,11 +2,9 @@
 
 import { createClient } from "@/lib/supabase/server";
 import ProductList from "./ProductList";
-import { Product } from "@/types"; // 1. Impor tipe data Product yang baru
+import { Product } from "@/types";
+import { unstable_cache } from "next/cache";
 
-export const revalidate = 3600;
-
-// 2. Ubah fungsi untuk bekerja dengan tipe data Product
 const getFilterCounts = (products: Product[]) => {
   const brandCounts = products.reduce((acc, product) => {
     acc[product.brand] = (acc[product.brand] || 0) + 1;
@@ -18,23 +16,33 @@ const getFilterCounts = (products: Product[]) => {
   };
 };
 
+// Fungsi cache menerima 'supabase' sebagai argumen
+const getCachedProducts = unstable_cache(
+  async (supabase) => {
+    const { data, error } = await supabase
+      .from('products')
+      .select(`*, product_variants ( * )`)
+      .order('name', { ascending: true });
+    
+    // Kembalikan data dan error untuk ditangani di komponen
+    return { products: data as Product[] | null, error };
+  },
+  ['all-products'], // Kunci cache
+  {
+    tags: ['products'], // Tag untuk revalidasi
+  }
+);
+
 export default async function ProductsPage() {
   const supabase = await createClient();
 
-  // 3. Ambil data dari tabel 'products' dan relasinya 'product_variants'
-  const { data: products, error: productsError } = await supabase
-    .from('products')
-    .select(`
-      *,
-      product_variants ( * )
-    `)
-    .order('name', { ascending: true });
+  // Panggil fungsi cache dengan melemparkan supabase client
+  const { products, error: productsError } = await getCachedProducts(supabase);
     
   if (productsError) {
     return <p className="text-center text-red-500 py-10">Gagal memuat data produk.</p>;
   }
 
-  // 4. Pastikan data yang dikirim memiliki tipe yang benar
   const { brands } = getFilterCounts(products || []);
 
   return (

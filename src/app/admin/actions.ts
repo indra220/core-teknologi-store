@@ -2,7 +2,7 @@
 'use server';
 
 import { createClient } from "@/lib/supabase/server";
-import { revalidatePath } from "next/cache";
+import { revalidateTag } from "next/cache";
 import type { Order } from "@/types";
 
 // --- PERBAIKAN DI SINI ---
@@ -116,7 +116,7 @@ export async function deleteProduct(productId: string, imageUrl: string | null) 
     return { success: false, message: "Gagal menghapus produk." };
   }
 
-  revalidatePath('/admin/products');
-  revalidatePath('/admin');
+  revalidateTag('products');
+  revalidateTag('dashboard-stats');
   return { success: true, message: "Produk berhasil dihapus." };
 }
