@@ -4,7 +4,7 @@ import Link from '@/components/NavigationLoader';
 import Image from 'next/image';
 import { Product } from "@/types";
 import { redirect } from 'next/navigation';
-import { unstable_cache } from "next/cache"; // <-- Impor unstable_cache
+import { unstable_cache } from "next/cache";
 
 export const runtime = 'edge';
 
@@ -13,10 +13,9 @@ type OrderItemSummary = {
   quantity: number;
 };
 
-// Bungkus keseluruhan logika fetching dalam satu fungsi cache
+// Fungsi cache sekarang menerima 'supabase' sebagai argumen
 const getCachedBestSellingProducts = unstable_cache(
-  async (limit: number) => {
-    const supabase = await createClient();
+  async (supabase, limit: number) => {
     const { data: orderItems, error: orderItemsError } = await supabase
       .from('order_items')
       .select('product_id, quantity');
@@ -67,7 +66,7 @@ const getCachedBestSellingProducts = unstable_cache(
 
 
 export default async function HomePage() {
-  const supabase = await createClient();
+  const supabase = await createClient(); // <-- Buat client di luar cache
   const { data: { user } } = await supabase.auth.getUser();
 
   if (user) {
@@ -82,7 +81,8 @@ export default async function HomePage() {
     }
   }
 
-  const products = await getCachedBestSellingProducts(4);
+  // Panggil fungsi cache dengan melemparkan 'supabase' dan 'limit'
+  const products = await getCachedBestSellingProducts(supabase, 4);
 
   return (
     <section className="py-8">
