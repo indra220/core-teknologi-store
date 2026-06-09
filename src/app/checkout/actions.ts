@@ -55,10 +55,10 @@ export async function createOrderFromWallet(cartItems: CartItem[]): Promise<Acti
     link: '/orders',
   });
 
-  revalidateTag(`orders/${user.id}`);
-  revalidateTag('admin-orders');
-  revalidateTag('notifications');
-  revalidateTag('dashboard-stats');
+  revalidateTag(`orders/${user.id}`, 'max');
+  revalidateTag('admin-orders', 'max');
+  revalidateTag('notifications', 'max');
+  revalidateTag('dashboard-stats', 'max');
   
   return { success: true, message: "Pembayaran berhasil! Pesanan Anda sedang diproses." };
 }

@@ -95,7 +95,7 @@ export async function addProductWithVariants(prevState: FormState, formData: For
     return { message: "Gagal menambahkan varian produk: " + variantsError.message, type: 'error' };
   }
 
-  revalidateTag('products');
-  revalidateTag('dashboard-stats');
+  revalidateTag('products', 'max');
+  revalidateTag('dashboard-stats', 'max');
   redirect('/admin/products');
 }

@@ -51,10 +51,10 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
       link: '/orders',
   });
 
-  revalidateTag(`orders/${user.id}`);
-  revalidateTag('admin-orders');
-  revalidateTag('notifications');
-  revalidateTag('dashboard-stats');
+  revalidateTag(`orders/${user.id}`, 'max');
+  revalidateTag('admin-orders', 'max');
+  revalidateTag('notifications', 'max');
+  revalidateTag('dashboard-stats', 'max');
   
   return { success: true, message: "Pesanan berhasil dibatalkan. Saldo telah masuk ke dompet Anda." };
 }
@@ -123,11 +123,11 @@ export async function confirmOrderReceived(orderId: string): Promise<ActionResul
         console.error("Gagal mengirim notifikasi ke admin:", e);
     }
 
-    revalidateTag(`orders/${user.id}`);
-    revalidateTag('admin-orders');
-    revalidateTag('admin-reports');
-    revalidateTag('notifications');
-    revalidateTag('dashboard-stats');
+    revalidateTag(`orders/${user.id}`, 'max');
+    revalidateTag('admin-orders', 'max');
+    revalidateTag('admin-reports', 'max');
+    revalidateTag('notifications', 'max');
+    revalidateTag('dashboard-stats', 'max');
 
     return { success: true, message: "Pesanan telah diselesaikan. Terima kasih telah berbelanja!" };
 }

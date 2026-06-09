@@ -116,7 +116,8 @@ export async function deleteProduct(productId: string, imageUrl: string | null) 
     return { success: false, message: "Gagal menghapus produk." };
   }
 
-  revalidateTag('products');
-  revalidateTag('dashboard-stats');
+  // PERBAIKAN: Menambahkan argumen kedua untuk menyesuaikan dengan Next.js 16.2.7
+  revalidateTag('products', 'max');
+  revalidateTag('dashboard-stats', 'max');
   return { success: true, message: "Produk berhasil dihapus." };
 }

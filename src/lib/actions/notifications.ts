@@ -37,7 +37,7 @@ export async function markNotificationAsRead(notificationId: string): Promise<Ac
     return { success: false, error: 'Gagal memperbarui notifikasi di database.' };
   }
   
-  revalidateTag('notifications'); 
+  revalidateTag('notifications', 'max'); 
   return { success: true };
 }
 
@@ -59,6 +59,6 @@ export async function deleteNotification(notificationId: string): Promise<Action
     return { success: false, error: 'Gagal menghapus notifikasi di database.' };
   }
 
-  revalidateTag('notifications');
+  revalidateTag('notifications', 'max');
   return { success: true };
 }

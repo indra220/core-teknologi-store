@@ -55,10 +55,10 @@ export async function updateOrderStatus(prevState: ActionResult, formData: FormD
     });
   }
 
-  revalidateTag('admin-orders');
-  revalidateTag(`orders/${userId}`);
-  revalidateTag('notifications');
-  revalidateTag('dashboard-stats');
+  revalidateTag('admin-orders', 'max');
+  revalidateTag(`orders/${userId}`, 'max');
+  revalidateTag('notifications', 'max');
+  revalidateTag('dashboard-stats', 'max');
   
   return { success: true, message: "Status pesanan berhasil diperbarui." };
 }

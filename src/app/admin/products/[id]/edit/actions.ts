@@ -75,9 +75,9 @@ export async function updateProductAndVariants(prevState: FormState, formData: F
     }
   }
 
-  revalidateTag('products');
-  revalidateTag(`products/${productId}`);
-  revalidateTag('dashboard-stats');
+  revalidateTag('products', 'max');
+  revalidateTag(`products/${productId}`, 'max');
+  revalidateTag('dashboard-stats', 'max');
   
   return { message: 'Produk dan varian berhasil diperbarui!', type: 'success' };
 }

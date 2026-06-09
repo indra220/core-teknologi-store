@@ -72,8 +72,8 @@ export async function updateUserByAdmin(prevState: FormState, formData: FormData
     successMessage = "Profil dan password pengguna berhasil diperbarui.";
   }
 
-  revalidateTag('users');
-  revalidateTag(`users/${userId}`);
+  revalidateTag('users', 'max');
+  revalidateTag(`users/${userId}`, 'max');
   return { message: successMessage, type: 'success' };
 }
 
@@ -111,7 +111,7 @@ export async function deleteUserByAdmin(prevState: FormState, formData: FormData
     return { message: "Gagal menghapus pengguna: " + deleteError.message, type: 'error' };
   }
 
-  revalidateTag('users');
-  revalidateTag('dashboard-stats');
+  revalidateTag('users', 'max');
+  revalidateTag('dashboard-stats', 'max');
   redirect('/admin/users');
 }

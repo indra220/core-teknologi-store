@@ -113,7 +113,7 @@ export async function updateProfile(prevState: FormState, formData: FormData): P
     }
   }
   
-  revalidateTag('profile');
+  revalidateTag('profile', 'max');
   return { message: "Profil berhasil diperbarui!", type: 'success' };
 }
 
