@@ -4,7 +4,6 @@ import { Order, Laptop } from "@/types";
 import ReportClientComponent from "./ReportClientComponent";
 import { unstable_cache } from "next/cache";
 
-// Fungsi cache untuk mengambil data pesanan laporan
 const getCachedAdminReports = unstable_cache(
   async (supabase) => {
     const { data, error } = await supabase
@@ -14,28 +13,27 @@ const getCachedAdminReports = unstable_cache(
       .order('created_at', { ascending: false });
     return { orders: data as Order[] | null, error };
   },
-  ['admin-reports-data'], // Kunci cache
+  ['admin-reports-data'],
   {
-    tags: ['admin-reports', 'orders'], // Tag revalidasi
+    tags: ['admin-reports', 'orders'],
   }
 );
 
-// Fungsi cache untuk mengambil data brand laptop
 const getCachedLaptopBrands = unstable_cache(
   async (supabase) => {
+    // MENYESUAIKAN: Mengembalikan kueri ke tabel 'laptops'
     const { data, error } = await supabase.from('laptops').select('brand');
     return { laptops: data as Laptop[] | null, error };
   },
-  ['laptop-brands-data'], // Kunci cache
+  ['laptop-brands-data'],
   {
-    tags: ['products'], // Tag revalidasi
+    tags: ['products'],
   }
 );
 
 export default async function AdminReportPage() {
   const supabase = await createClient();
 
-  // Panggil kedua fungsi cache secara terpisah
   const { orders, error: ordersError } = await getCachedAdminReports(supabase);
   const { laptops, error: laptopsError } = await getCachedLaptopBrands(supabase);
 

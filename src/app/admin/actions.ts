@@ -5,8 +5,6 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidateTag } from "next/cache";
 import type { Order } from "@/types";
 
-// --- PERBAIKAN DI SINI ---
-// Mendefinisikan tipe secara manual untuk menghindari error kompilasi ts(2314)
 type RecentOrder = {
   id: Order['id'];
   created_at: Order['created_at'];
@@ -14,7 +12,6 @@ type RecentOrder = {
   profiles: Order['profiles'];
 };
 
-// Tipe baru untuk data tren penjualan
 interface SalesTrendPoint {
   date: string;
   total: number;
@@ -65,8 +62,9 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     .from('profiles')
     .select('*', { count: 'exact', head: true });
 
+  // MENYESUAIKAN: Mengubah nama tabel ke 'laptops'
   const { count: totalProducts } = await supabase
-    .from('products')
+    .from('laptops')
     .select('*', { count: 'exact', head: true });
   
   const { data: salesData } = await supabase
@@ -110,13 +108,13 @@ export async function deleteProduct(productId: string, imageUrl: string | null) 
     }
   }
   
-  const { error } = await supabase.from('products').delete().eq('id', productId);
+  // MENYESUAIKAN: Mengubah nama tabel ke 'laptops'
+  const { error } = await supabase.from('laptops').delete().eq('id', productId);
 
   if (error) {
     return { success: false, message: "Gagal menghapus produk." };
   }
 
-  // PERBAIKAN: Menambahkan argumen kedua untuk menyesuaikan dengan Next.js 16.2.7
   revalidateTag('products', 'max');
   revalidateTag('dashboard-stats', 'max');
   return { success: true, message: "Produk berhasil dihapus." };

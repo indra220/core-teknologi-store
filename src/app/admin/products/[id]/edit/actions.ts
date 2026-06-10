@@ -9,10 +9,8 @@ type FormState = {
   type: 'success' | 'error' | null;
 };
 
-// Definisikan tipe data yang jelas untuk varian yang datang dari form
-// untuk menggantikan penggunaan 'any'
 type VariantFromClient = {
-  id?: string; // id bisa jadi tidak ada untuk varian baru
+  id?: string;
   product_id?: string;
   price: string | number;
   stock: string | number;
@@ -30,8 +28,9 @@ export async function updateProductAndVariants(prevState: FormState, formData: F
   const variantsToDelete: string[] = JSON.parse(formData.get('variantsToDelete') as string);
 
   // 1. Update data produk dasar
+  // MENYESUAIKAN: Mengubah nama tabel ke 'laptops'
   const { error: productError } = await supabase
-    .from('products')
+    .from('laptops')
     .update({
       name: formData.get('name') as string,
       brand: formData.get('brand') as string,
@@ -45,9 +44,8 @@ export async function updateProductAndVariants(prevState: FormState, formData: F
   
   // 2. Update atau Insert (Upsert) varian yang ada dan baru
   if (variants.length > 0) {
-    // Gunakan tipe 'VariantFromClient' yang sudah didefinisikan
     const variantsToUpsert = variants.map((v: VariantFromClient) => ({
-      id: v.id, // Supabase akan menggunakan ini untuk update jika ada
+      id: v.id,
       product_id: productId,
       price: Number(String(v.price).replace(/[^0-9]/g, "")),
       stock: Number(v.stock) || 0,
@@ -65,7 +63,7 @@ export async function updateProductAndVariants(prevState: FormState, formData: F
 
   // 3. Hapus varian yang ditandai untuk dihapus
   if (variantsToDelete.length > 0) {
-    const { error: deleteError } = await supabase
+    const { error: deleteError = null } = await supabase
       .from('product_variants')
       .delete()
       .in('id', variantsToDelete);
