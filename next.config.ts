@@ -5,7 +5,12 @@ const nextConfig = {
       {
         protocol: 'https',
         // Ganti 'abcdefg.supabase.co' dengan URL Supabase Anda
-        hostname: 'jcioxsycybxloxtxejqy.supabase.co', 
+        hostname: 'https://vnhawrausejdwkozsonv.supabase.co', 
+      },
+      {
+        protocol: 'https',
+        // Mengizinkan pengambilan gambar avatar otomatis
+        hostname: 'ui-avatars.com', 
       },
     ],
   },
