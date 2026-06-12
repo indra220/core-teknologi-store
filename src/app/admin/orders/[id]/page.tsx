@@ -10,7 +10,6 @@ import Image from "next/image";
 import UpdateStatusForm from "./UpdateStatusForm";
 import { UserIcon, MapPinIcon, ShoppingBagIcon } from '@heroicons/react/24/outline';
 
-// Tipe untuk params, tetap berguna untuk kejelasan
 type OrderPageParams = {
   id: string;
 };
@@ -47,7 +46,6 @@ function OrderDetailSkeleton() {
 }
 
 export default function OrderDetailPage() {
-  // 1. Dapatkan params secara langsung. useParams di Client Component mengembalikan objek.
   const params = useParams<OrderPageParams>();
   const orderId = params.id;
 
@@ -68,8 +66,6 @@ export default function OrderDetailPage() {
 
       if (error || !data) {
         console.error("Error fetching order:", error);
-        // notFound() tidak bisa digunakan di client, jadi kita bisa redirect atau tampilkan pesan
-        // Untuk sekarang, kita tampilkan pesan error di console.
       } else {
         setOrder(data as unknown as Order);
       }
@@ -93,7 +89,7 @@ export default function OrderDetailPage() {
         <div>
             <h1 className="text-3xl font-extrabold text-gray-900 dark:text-gray-50 tracking-tight">Detail Pesanan</h1>
             <p className="mt-2 text-gray-600 dark:text-gray-300">
-                ID Pesanan: <span className="font-mono">{order.paypal_order_id}</span>
+                ID Pesanan: <span className="font-mono">{order.paypal_order_id || 'Pembayaran Wallet'}</span>
             </p>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 Tanggal: {formatDate(order.created_at)}
@@ -114,7 +110,14 @@ export default function OrderDetailPage() {
                 <ul className="divide-y divide-gray-200 dark:divide-gray-600">
                     {order.order_items.map(item => (
                         <li key={item.id} className="flex py-4">
-                            <Image src={item.products?.image_url || '/placeholder.png'} alt={item.product_name} width={80} height={80} className="h-20 w-20 rounded-lg object-cover border dark:border-gray-600"/>
+                            {/* Perbaikan pada pemanggilan image_url dan product_name */}
+                            <Image 
+                                src={item.product_image_url || item.products?.image_url || '/placeholder.png'} 
+                                alt={item.product_name || 'Gambar Produk'} 
+                                width={80} 
+                                height={80} 
+                                className="h-20 w-20 rounded-lg object-cover border dark:border-gray-600"
+                            />
                             <div className="ml-4 flex-grow">
                                 <p className="font-semibold text-gray-900 dark:text-gray-50">{item.product_name}</p>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">{item.quantity} x {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.price)}</p>

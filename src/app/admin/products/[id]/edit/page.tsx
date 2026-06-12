@@ -5,9 +5,9 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { notFound, useParams } from "next/navigation";
 import EditProductForm from "./EditProductForm";
-import type { Product } from "@/types";
+// Menggunakan tipe Laptops karena ini yang memiliki relasi varian
+import type { Laptops } from "@/types";
 
-// Skeleton component for loading state
 function EditProductSkeleton() {
     return (
         <div className="max-w-4xl mx-auto animate-pulse">
@@ -24,27 +24,29 @@ export default function EditProductPage() {
     const params = useParams<{ id: string }>();
     const productId = params.id;
 
-    const [product, setProduct] = useState<Product | null>(null);
+    // Menggunakan Laptops untuk state
+    const [product, setProduct] = useState<Laptops | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isError, setIsError] = useState(false);
 
     useEffect(() => {
         if (!productId) return;
 
         const supabase = createClient();
         const fetchProduct = async () => {
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from('products')
                 .select(`
                     *,
                     product_variants ( * )
                 `)
                 .eq('id', productId)
-                .single<Product>();
+                .single();
 
-            if (data) {
-                setProduct(data);
+            if (error || !data) {
+                setIsError(true);
             } else {
-                notFound();
+                setProduct(data as unknown as Laptops);
             }
             setLoading(false);
         };
@@ -56,7 +58,7 @@ export default function EditProductPage() {
         return <EditProductSkeleton />;
     }
 
-    if (!product) {
+    if (isError || !product) {
         return notFound();
     }
 

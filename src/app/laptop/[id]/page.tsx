@@ -5,7 +5,8 @@ import Image from "next/image";
 import NavigationLoader from "@/components/NavigationLoader";
 import ProductDetailClient from "./ProductDetailClient";
 import { Suspense } from "react";
-import type { Product } from "@/types";
+// Perbaikan: Import tipe Laptops karena ini yang memiliki relasi product_variants
+import type { Laptops } from "@/types";
 import { unstable_cache } from "next/cache";
 
 export const runtime = 'edge';
@@ -30,7 +31,8 @@ function ProductDetailSkeleton() {
   );
 }
 
-function ProductDetails({ product }: { product: Product }) {
+// Perbaikan: Ubah tipe parameter menjadi Laptops
+function ProductDetails({ product }: { product: Laptops }) {
   return (
      <div className="bg-white dark:bg-gray-800 p-6 md:p-12 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
         <div className="flex flex-col items-center justify-center p-4">
@@ -67,7 +69,8 @@ const getCachedProductById = unstable_cache(
       .select(`*, product_variants ( * )`)
       .eq('id', id)
       .single();
-    return { product: data as Product | null, error };
+    // Perbaikan: Tipe cast menggunakan Laptops
+    return { product: data as Laptops | null, error };
   },
   ['product-details'],
   {

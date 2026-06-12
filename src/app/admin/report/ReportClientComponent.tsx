@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from "react";
-import { Order, Laptop } from "@/types";
+import { Order, Laptops } from "@/types";
 import Image from "next/image";
 import { Chart as ChartJS, CategoryScale, LinearScale, Title, Tooltip, Legend, PointElement, LineElement, ArcElement } from 'chart.js';
 import { CubeTransparentIcon, BanknotesIcon, UsersIcon } from '@heroicons/react/24/outline';
@@ -30,7 +30,7 @@ const StatCard = ({ title, value, icon }: { title: string, value: string, icon: 
 );
 
 // MENYESUAIKAN: Mengembalikan ke model parameter allLaptops dan tipe data Laptop[]
-export default function ReportClientComponent({ allOrders, allLaptops }: { allOrders: Order[], allLaptops: Laptop[] }) {
+export default function ReportClientComponent({ allOrders, allLaptops }: { allOrders: Order[], allLaptops: Laptops[] }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [timeRange, setTimeRange] = useState<number>(30);

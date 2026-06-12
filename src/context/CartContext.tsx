@@ -3,7 +3,8 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { useNotification } from '@/components/notifications/NotificationProvider';
-import { Product, ProductVariant } from '@/types';
+// Perbaikan 1: Ubah import Product menjadi Laptops
+import { Laptops, ProductVariant } from '@/types';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 
@@ -22,16 +23,18 @@ export interface CartItem {
 
 type CartDataFromServer = {
   quantity: number;
-  product_variants: (ProductVariant & { products: Product | null }) | null;
+  // Perbaikan 2: Sesuaikan relasi tabel menggunakan tipe Laptops
+  product_variants: (ProductVariant & { products: Laptops | null }) | null;
 }
 
 interface CartContextType {
   cartItems: CartItem[];
-  addToCart: (product: Product, variant: ProductVariant, quantity: number) => Promise<void>;
+  // Perbaikan 3: Ubah parameter product menjadi Laptops
+  addToCart: (product: Laptops, variant: ProductVariant, quantity: number) => Promise<void>;
   removeFromCart: (variantId: string) => Promise<void>;
   updateQuantity: (variantId: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
-  clearClientCart: () => void; // <-- TAMBAHKAN FUNGSI BARU INI
+  clearClientCart: () => void;
   cartCount: number;
   loading: boolean;
 }
@@ -108,7 +111,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, [fetchCartItems, supabase]);
   
-  const addToCart = async (product: Product, variant: ProductVariant, quantity: number) => {
+  // Perbaikan 4: Ubah parameter product menjadi Laptops
+  const addToCart = async (product: Laptops, variant: ProductVariant, quantity: number) => {
     if (!user) return;
     const existingItem = cartItems.find(item => item.variantId === variant.id);
     const newQuantity = (existingItem?.quantity || 0) + quantity;
@@ -168,7 +172,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // <-- IMPLEMENTASI FUNGSI BARU
   const clearClientCart = () => {
     setCartItems([]);
   };

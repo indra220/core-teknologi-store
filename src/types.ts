@@ -2,8 +2,10 @@
 
 export type EmailStatus = 'VERIFIED' | 'PENDING_CHANGE';
 
-export interface Laptop {
+// Representasi produk tunggal/flat
+export interface Product {
   id: string;
+  product_id?: string; 
   name: string;
   brand: string;
   price: number;
@@ -16,6 +18,7 @@ export interface Laptop {
   created_at: string;
 }
 
+// Representasi varian produk sesuai nama tabel di database
 export interface ProductVariant {
   id: string;
   product_id: string;
@@ -28,14 +31,15 @@ export interface ProductVariant {
   created_at: string;
 }
 
-export interface Product {
+// Kumpulan produk yang memiliki relasi dengan product_variants (menggunakan snake_case)
+export interface Laptops {
   id: string;
   name: string;
   brand: string;
   description: string | null;
   image_url: string | null;
   created_at: string;
-  product_variants: ProductVariant[];
+  product_variants: ProductVariant[]; // Sinkron dengan key dari response Supabase
 }
 
 export interface Profile {
@@ -43,7 +47,7 @@ export interface Profile {
   updated_at: string | null;
   username: string;
   full_name: string | null;
-  avatar_url: string | null; // <-- Pastikan baris ini ada
+  avatar_url: string | null; 
   role: string;
   email: string | null;
   wallet_balance: number;
@@ -53,8 +57,8 @@ export interface Profile {
 
 export interface ShippingAddress {
   address_line_1: string;
-  admin_area_2: string;
-  admin_area_1: string;
+  admin_area_2: string; 
+  admin_area_1: string; 
   postal_code: string;
   country_code: string;
 }
@@ -66,14 +70,18 @@ export interface ProductInfo {
 
 export interface OrderItem {
   id: string;
+  order_id?: string;   
+  variant_id?: string; 
   quantity: number;
   price: number;
   product_name: string;
   product_image_url: string | null;
-  products: ProductInfo | null;
+  products?: ProductInfo | null; 
 }
 
 export type OrderStatus = 'Menunggu Konfirmasi' | 'Diproses' | 'Dalam Pengiriman' | 'Selesai' | 'Dibatalkan';
+
+export type PaymentMethod = 'paypal' | 'wallet';
 
 export interface Order {
   id: string;
@@ -81,7 +89,7 @@ export interface Order {
   created_at: string;
   total_amount: number;
   status: OrderStatus;
-  paypal_order_id: string;
+  paypal_order_id?: string | null; 
   shipping_address: ShippingAddress;
   order_items: OrderItem[];
   profiles: { 
@@ -89,5 +97,5 @@ export interface Order {
     full_name: string | null;
     email: string | null;
   } | null;
-  payment_method: 'paypal' | 'wallet';
+  payment_method: PaymentMethod;
 }

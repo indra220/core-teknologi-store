@@ -1,6 +1,6 @@
 // src/app/admin/report/page.tsx
 import { createClient } from "@/lib/supabase/server";
-import { Order, Laptop } from "@/types";
+import { Order, Laptops } from "@/types";
 import ReportClientComponent from "./ReportClientComponent";
 import { unstable_cache } from "next/cache";
 
@@ -23,7 +23,7 @@ const getCachedLaptopBrands = unstable_cache(
   async (supabase) => {
     // MENYESUAIKAN: Mengembalikan kueri ke tabel 'laptops'
     const { data, error } = await supabase.from('laptops').select('brand');
-    return { laptops: data as Laptop[] | null, error };
+    return { laptops: data as Laptops[] | null, error };
   },
   ['laptop-brands-data'],
   {

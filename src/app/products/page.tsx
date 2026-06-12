@@ -2,10 +2,12 @@
 
 import { createClient } from "@/lib/supabase/server";
 import ProductList from "./ProductList";
-import { Product } from "@/types";
+// Perbaikan: Import Laptops bukan Product
+import { Laptops } from "@/types";
 import { unstable_cache } from "next/cache";
 
-const getFilterCounts = (products: Product[]) => {
+// Perbaikan: Ubah parameter menjadi Laptops[]
+const getFilterCounts = (products: Laptops[]) => {
   const brandCounts = products.reduce((acc, product) => {
     acc[product.brand] = (acc[product.brand] || 0) + 1;
     return acc;
@@ -16,7 +18,6 @@ const getFilterCounts = (products: Product[]) => {
   };
 };
 
-// Fungsi cache menerima 'supabase' sebagai argumen
 const getCachedProducts = unstable_cache(
   async (supabase) => {
     const { data, error } = await supabase
@@ -24,19 +25,18 @@ const getCachedProducts = unstable_cache(
       .select(`*, product_variants ( * )`)
       .order('name', { ascending: true });
     
-    // Kembalikan data dan error untuk ditangani di komponen
-    return { products: data as Product[] | null, error };
+    // Perbaikan: Cast data menjadi Laptops[]
+    return { products: data as Laptops[] | null, error };
   },
-  ['all-products'], // Kunci cache
+  ['all-products'], 
   {
-    tags: ['products'], // Tag untuk revalidasi
+    tags: ['products'], 
   }
 );
 
 export default async function ProductsPage() {
   const supabase = await createClient();
 
-  // Panggil fungsi cache dengan melemparkan supabase client
   const { products, error: productsError } = await getCachedProducts(supabase);
     
   if (productsError) {

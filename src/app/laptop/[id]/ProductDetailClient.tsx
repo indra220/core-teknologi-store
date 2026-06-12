@@ -6,27 +6,25 @@ import { useNotification } from "@/components/notifications/NotificationProvider
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
-import type { Product, ProductVariant } from "@/types";
+// Perbaikan: Menggunakan tipe Laptops (jamak) karena memiliki relasi product_variants
+import type { Laptops, ProductVariant } from "@/types";
 import { useCart } from "@/context/CartContext";
 
 // --- Helper Functions untuk Menyederhanakan Label ---
 const simplifyProcessor = (spec: string | null): string => {
   if (!spec) return 'N/A';
-  // Mencoba mencocokkan pola umum seperti "Intel Core iX-XXXX" atau "AMD Ryzen X XXXX"
   const match = spec.match(/(Intel® Core™ (?:i\d|Ultra \d)-\w+|AMD Ryzen™ (?:AI )?\d \w+)/);
   return match ? match[0] : spec.split('/')[0].trim();
 };
 
-// --- PERBAIKAN DI SINI ---
 const simplifyRam = (spec: string | null): string => {
   if (!spec) return 'N/A';
   const s = spec.toUpperCase();
   
   const sizeMatch = s.match(/(\d+\s*GB)/);
-  if (!sizeMatch) return spec; // Jika ukuran tidak ditemukan, kembalikan teks asli
-  const size = sizeMatch[0].replace(/\s/g, ''); // Hasilnya "8GB"
+  if (!sizeMatch) return spec; 
+  const size = sizeMatch[0].replace(/\s/g, ''); 
 
-  // Periksa jenis DDR
   if (s.includes('DDR5') || s.includes('LPDDR5')) {
     return `${size} DDR5`;
   }
@@ -34,9 +32,8 @@ const simplifyRam = (spec: string | null): string => {
     return `${size} DDR4`;
   }
   
-  return size; // Fallback jika jenis DDR tidak ditemukan
+  return size; 
 };
-// --- AKHIR PERBAIKAN ---
 
 const simplifyStorage = (spec: string | null): string => {
   if (!spec) return 'N/A';
@@ -93,15 +90,14 @@ function VariantOptionGroup({ title, options, getLabel, selectedValue, onSelect,
 const STATIC_RAM_OPTIONS = ['8GB DDR5', '16GB DDR5', '32GB DDR5', '8GB DDR4', '16GB DDR4'];
 const STATIC_STORAGE_OPTIONS = ['256GB NVMe SSD', '512GB NVMe SSD', '1TB NVMe SSD', '256GB SSD', '512GB SSD'];
 
-
-export default function ProductDetailClient({ product }: { product: Product }) {
+// Perbaikan Tipe Props: Menggunakan Laptops untuk menghindari type mismatch
+export default function ProductDetailClient({ product }: { product: Laptops }) {
   const allVariants = useMemo(() => product.product_variants || [], [product.product_variants]);
 
   const { addToCart } = useCart();
   const { showNotification } = useNotification();
   const router = useRouter();
 
-  // State untuk menyimpan pilihan (menggunakan spesifikasi LENGKAP dari DB)
   const [selectedProcessor, setSelectedProcessor] = useState<string | null>(null);
   const [selectedRam, setSelectedRam] = useState<string | null>(null);
   const [selectedStorage, setSelectedStorage] = useState<string | null>(null);
@@ -110,10 +106,8 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   const [quantity, setQuantity] = useState(1);
   const [user, setUser] = useState<User | null>(null);
 
-  // Opsi prosesor dinamis dari produk
   const processorOptions = useMemo(() => [...new Set(allVariants.map(v => v.processor).filter(Boolean))] as string[], [allVariants]);
 
-  // Inisialisasi state saat komponen pertama kali dimuat
   useEffect(() => {
     const firstAvailableVariant = allVariants.find(v => v.stock > 0) || allVariants[0];
     if (firstAvailableVariant) {
@@ -123,7 +117,6 @@ export default function ProductDetailClient({ product }: { product: Product }) {
     }
   }, [allVariants]);
 
-  // Cari varian yang cocok setiap kali ada perubahan pilihan
   useEffect(() => {
     const foundVariant = allVariants.find(v => 
       v.processor === selectedProcessor &&
@@ -131,12 +124,10 @@ export default function ProductDetailClient({ product }: { product: Product }) {
       v.storage === selectedStorage
     );
     setCurrentVariant(foundVariant || null);
-    setQuantity(1); // Reset kuantitas setiap ganti varian
+    setQuantity(1); 
   }, [selectedProcessor, selectedRam, selectedStorage, allVariants]);
   
-  // Handler saat memilih Prosesor (pilihan utama)
   const handleProcessorSelect = (processorSpec: string) => {
-    // Cari varian pertama yang cocok dengan prosesor baru
     const compatibleVariant = allVariants.find(v => v.processor === processorSpec && v.stock > 0) || allVariants.find(v => v.processor === processorSpec);
     if (compatibleVariant) {
       setSelectedProcessor(compatibleVariant.processor);
@@ -145,9 +136,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
     }
   };
   
-  // Handler untuk RAM & Storage
   const handleRamSelect = (simpleRam: string) => {
-    // Cari varian yang cocok dengan prosesor saat ini dan RAM baru
     const targetVariant = allVariants.find(v => v.processor === selectedProcessor && simplifyRam(v.ram) === simpleRam);
     if (targetVariant) setSelectedRam(targetVariant.ram);
   };
@@ -157,7 +146,6 @@ export default function ProductDetailClient({ product }: { product: Product }) {
     if (targetVariant) setSelectedStorage(targetVariant.storage);
   };
 
-  // Fungsi untuk menonaktifkan tombol jika kombinasinya tidak ada DENGAN PROSESOR YANG DIPILIH
   const isRamDisabled = useCallback((simpleRam: string): boolean => {
     return !allVariants.some(v => v.processor === selectedProcessor && simplifyRam(v.ram) === simpleRam);
   }, [selectedProcessor, allVariants]);
@@ -165,7 +153,6 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   const isStorageDisabled = useCallback((simpleStorage: string): boolean => {
     return !allVariants.some(v => v.processor === selectedProcessor && simplifyStorage(v.storage) === simpleStorage);
   }, [selectedProcessor, allVariants]);
-
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -202,12 +189,12 @@ export default function ProductDetailClient({ product }: { product: Product }) {
         getLabel={(spec) => simplifyProcessor(spec)}
         selectedValue={selectedProcessor}
         onSelect={handleProcessorSelect}
-        isOptionDisabled={() => false} // Opsi prosesor tidak pernah disable
+        isOptionDisabled={() => false} 
       />
       <VariantOptionGroup
         title="RAM"
         options={STATIC_RAM_OPTIONS}
-        getLabel={(spec) => spec} // Label sudah simple
+        getLabel={(spec) => spec} 
         selectedValue={simplifyRam(selectedRam)}
         onSelect={handleRamSelect}
         isOptionDisabled={isRamDisabled}
@@ -215,7 +202,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
       <VariantOptionGroup
         title="Penyimpanan"
         options={STATIC_STORAGE_OPTIONS}
-        getLabel={(spec) => spec} // Label sudah simple
+        getLabel={(spec) => spec} 
         selectedValue={simplifyStorage(selectedStorage)}
         onSelect={handleStorageSelect}
         isOptionDisabled={isStorageDisabled}

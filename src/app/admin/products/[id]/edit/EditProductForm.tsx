@@ -8,7 +8,8 @@ import Link from "@/components/NavigationLoader";
 import CurrencyInput from '@/components/CurrencyInput';
 import { TrashIcon, PlusCircleIcon } from '@heroicons/react/24/outline';
 import { updateProductAndVariants } from "./actions";
-import type { Product, ProductVariant } from "@/types";
+// Menggunakan tipe Laptops karena ini yang memiliki relasi varian
+import type { Laptops, ProductVariant } from "@/types";
 import NProgress from 'nprogress';
 
 type ClientVariant = Partial<ProductVariant> & { tempId: number };
@@ -22,8 +23,8 @@ function SubmitButton() {
   );
 }
 
-
-export default function EditProductForm({ product }: { product: Product }) {
+// Props menggunakan tipe Laptops
+export default function EditProductForm({ product }: { product: Laptops }) {
   const initialState = { message: null, type: null };
   const [formState, formAction] = useActionState(updateProductAndVariants, initialState);
   
@@ -31,16 +32,16 @@ export default function EditProductForm({ product }: { product: Product }) {
   const [variantsToDelete, setVariantsToDelete] = useState<string[]>([]);
 
   useEffect(() => {
-    setVariants(product.product_variants.map(v => ({ ...v, tempId: Math.random() })));
+    if (product.product_variants) {
+      setVariants(product.product_variants.map(v => ({ ...v, tempId: Math.random() })));
+    }
   }, [product]);
 
-  // --- PERBAIKAN TOPLOADER DI SINI ---
   useEffect(() => {
     if (formState?.message) {
       NProgress.done();
     }
   }, [formState]);
-  // --- AKHIR PERBAIKAN ---
 
   const addVariant = () => {
     setVariants([...variants, {

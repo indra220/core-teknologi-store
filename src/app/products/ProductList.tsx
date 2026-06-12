@@ -4,12 +4,13 @@
 
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
-import NavigationLoader from '@/components/NavigationLoader'; // <-- Ganti Link ke NavigationLoader
+import NavigationLoader from '@/components/NavigationLoader'; 
 import Image from 'next/image';
-import { Product, ProductVariant } from '@/types';
+// Perbaikan: Import Laptops bukan Product
+import { Laptops, ProductVariant } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// --- IKON-IKON (Tidak ada perubahan) ---
+// --- IKON-IKON ---
 const ChevronDownIcon = () => <svg className="h-5 w-5 transition-transform" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>;
 const ResetIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5M20 20v-5h-5M4 4l16 16" /></svg>;
 const BrandIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10.05 4.575a1.575 1.575 0 10-3.15 0v3m3.15-3v-1.5a1.575 1.575 0 013.15 0v1.5m-3.15 0l.075 5.925m3.075-5.925v3m3.15-3v-1.5a1.575 1.575 0 013.15 0v1.5m-3.15 0l.075 5.925m3.075-5.925v3m0 0l-5.25 5.25m-7.5-5.25l5.25 5.25m-1.5-5.25l-1.5 1.5" /></svg>;
@@ -20,7 +21,6 @@ const GraphicsIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-
 const PriceIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 const ScreenSizeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-1.621-.621A3 3 0 0115 18.257V17.25m-6 0h6" /><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.5v-7.5c0-.934.716-1.687 1.66-1.744A48.52 48.52 0 0112 4.5c2.278 0 4.542.164 6.74 1.012A1.72 1.72 0 0121 7.25v7.5" /></svg>;
 
-// --- Sisa komponen (CheckboxItem, FilterDropdown, helpers, dll tidak berubah) ---
 const CheckboxItem = ({ id, label, checked, onChange }: { id: string; label: string; checked: boolean; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; }) => (
   <label
     htmlFor={id}
@@ -60,7 +60,10 @@ const FilterDropdown = ({ title, icon, children, selectionCount }: { title: stri
   );
 };
 interface BrandWithCount { brand: string; count: number; }
-interface ProductListProps { allProducts: Product[]; allBrands: BrandWithCount[]; }
+
+// Perbaikan: Ubah tipe dari Product[] menjadi Laptops[]
+interface ProductListProps { allProducts: Laptops[]; allBrands: BrandWithCount[]; }
+
 const groupProcessor = (processor: string): string => {
   const p = processor.toLowerCase();
   if (p.includes('core™ ultra 9')) return 'Intel® Core™ Ultra 9';
@@ -185,7 +188,8 @@ export default function ProductList({ allProducts, allBrands }: ProductListProps
     const countProducts = (
       categoryMap: Map<string, number>,
       getGroup: (variant: ProductVariant) => string | null,
-      getGroupFromProduct?: (product: Product) => string
+      // Perbaikan: Ubah tipe argumen product di callback
+      getGroupFromProduct?: (product: Laptops) => string 
     ) => {
       const productIdsByCategory = new Map<string, Set<string>>();
 
@@ -241,7 +245,8 @@ export default function ProductList({ allProducts, allBrands }: ProductListProps
         }));
     }
 
-    const getMinPrice = (product: Product) => {
+    // Perbaikan: Ubah argumen fungsi ini menggunakan tipe Laptops
+    const getMinPrice = (product: Laptops) => {
       if (!product.product_variants || product.product_variants.length === 0) return Infinity;
       return Math.min(...product.product_variants.map(v => v.price));
     };
@@ -329,7 +334,8 @@ export default function ProductList({ allProducts, allBrands }: ProductListProps
 
         {filteredAndSortedProducts.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredAndSortedProducts.map((product: Product) => {
+            {/* Perbaikan: Ubah iterasi product menggunakan tipe Laptops */}
+            {filteredAndSortedProducts.map((product: Laptops) => {
               const displayPrice = product.product_variants.length > 0 
                 ? Math.min(...product.product_variants.map(v => v.price)) 
                 : 0;

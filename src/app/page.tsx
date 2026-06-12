@@ -2,7 +2,8 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from '@/components/NavigationLoader';
 import Image from 'next/image';
-import { Product } from "@/types";
+// Perbaikan: Import tipe Laptops karena ini yang memiliki array product_variants
+import { Laptops } from "@/types";
 import { redirect } from 'next/navigation';
 import { unstable_cache } from "next/cache";
 
@@ -56,7 +57,8 @@ const getCachedBestSellingProducts = unstable_cache(
       return [];
     }
     
-    return bestSellers.sort((a: Product, b: Product) => productSales[b.id] - productSales[a.id]);
+    // Perbaikan: Ubah tipe Product menjadi Laptops
+    return bestSellers.sort((a: Laptops, b: Laptops) => productSales[b.id] - productSales[a.id]);
   },
   ['best-selling-products'], // Kunci cache unik
   {
@@ -108,7 +110,8 @@ export default async function HomePage() {
         </div>
         {products.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {products.map((product: Product) => {
+            {/* Perbaikan: Ubah deklarasi map dari Product menjadi Laptops */}
+            {products.map((product: Laptops) => {
               const displayPrice = product.product_variants && product.product_variants.length > 0
                 ? Math.min(...product.product_variants.map(v => v.price))
                 : 0;

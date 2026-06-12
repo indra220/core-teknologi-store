@@ -22,12 +22,13 @@ const VariantSchema = z.object({
   screen_size: z.string().optional(),
 });
 
-const ProductSchema = z.object({
-  name: z.string().min(3, "Nama produk minimal 3 karakter."),
+// Penamaan schema diubah ke LaptopsSchema
+const LaptopsSchema = z.object({
+  name: z.string().min(3, "Nama laptops minimal 3 karakter."),
   brand: z.string().min(2, "Nama brand minimal 2 karakter."),
   description: z.string().optional(),
   image: z.instanceof(File).refine(file => file.size < 4 * 1024 * 1024, "Ukuran gambar maksimal 4MB.").optional(),
-  variants: z.array(VariantSchema).min(1, "Produk harus memiliki setidaknya satu varian."),
+  variants: z.array(VariantSchema).min(1, "Laptops harus memiliki setidaknya satu varian."),
 });
 
 export async function addProductWithVariants(prevState: FormState, formData: FormData): Promise<FormState> {
@@ -36,7 +37,7 @@ export async function addProductWithVariants(prevState: FormState, formData: For
   const variantsData = JSON.parse(formData.get('variants') as string);
   const rawFormData = Object.fromEntries(formData);
 
-  const validatedFields = ProductSchema.safeParse({
+  const validatedFields = LaptopsSchema.safeParse({
     ...rawFormData,
     variants: variantsData
   });
@@ -62,19 +63,19 @@ export async function addProductWithVariants(prevState: FormState, formData: For
     publicUrl = supabase.storage.from('product-images').getPublicUrl(fileName).data.publicUrl;
   }
 
-  // MENYESUAIKAN: Mengubah nama tabel ke 'laptops'
-  const { data: newProduct, error: productError } = await supabase
+  // Menggunakan nama variabel newLaptops dan laptopsError
+  const { data: newLaptops, error: laptopsError } = await supabase
     .from('laptops')
     .insert({ name, brand, description, image_url: publicUrl })
     .select('id')
     .single();
 
-  if (productError || !newProduct) {
-    return { message: "Gagal membuat produk dasar: " + productError?.message, type: 'error' };
+  if (laptopsError || !newLaptops) {
+    return { message: "Gagal membuat data laptops dasar: " + laptopsError?.message, type: 'error' };
   }
   
   const variantsToInsert = variants.map((variant) => ({
-    product_id: newProduct.id,
+    laptops_id: newLaptops.id, // <-- Diubah menggunakan laptops_id
     price: Number(String(variant.price).replace(/[^0-9]/g, "")),
     processor: variant.processor || null,
     ram: variant.ram || null,
@@ -83,12 +84,13 @@ export async function addProductWithVariants(prevState: FormState, formData: For
     stock: Number(variant.stock),
   }));
   
-  const { error: variantsError } = await supabase.from('product_variants').insert(variantsToInsert);
+  // Memasukkan ke tabel 'variant'
+  const { error: variantsError } = await supabase.from('variant').insert(variantsToInsert);
 
   if (variantsError) {
-    // MENYESUAIKAN: Mengubah nama tabel ke 'laptops'
-    await supabase.from('laptops').delete().eq('id', newProduct.id);
-    return { message: "Gagal menambahkan varian produk: " + variantsError.message, type: 'error' };
+    // Rollback: Hapus laptops jika gagal memasukkan varian
+    await supabase.from('laptops').delete().eq('id', newLaptops.id);
+    return { message: "Gagal menambahkan varian: " + variantsError.message, type: 'error' };
   }
 
   revalidateTag('products', 'max');

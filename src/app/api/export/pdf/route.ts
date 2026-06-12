@@ -116,11 +116,13 @@ export async function GET(request: NextRequest) {
 
         // --- Tabel Data dengan Desain Baru ---
         const tableColumn = ["#", "Tanggal", "ID Pesanan", "Pengguna", "Total", "Status"];
+        
+        // Perbaikan dilakukan pada bagian ini untuk menghindari nilai 'undefined'
         const tableRows = orders.map((order, index) => [
             index + 1,
             formatDate(order.created_at),
-            order.paypal_order_id,
-            order.profiles?.username || 'N/A',
+            order.paypal_order_id ?? '-', // Menggunakan operator ?? agar fallback ke string jika null/undefined
+            order.profiles?.username ?? 'N/A',
             formatCurrency(order.total_amount),
             order.status,
         ]);
@@ -129,7 +131,7 @@ export async function GET(request: NextRequest) {
             startY: startY + cardHeight + 12,
             head: [tableColumn],
             body: tableRows,
-            theme: 'striped', // Menggunakan tema 'striped' yang lebih bersih
+            theme: 'striped', 
             styles: {
                 font: FONT,
                 fontSize: 9,
@@ -137,7 +139,7 @@ export async function GET(request: NextRequest) {
                 textColor: COLORS.text,
             },
             headStyles: {
-                fillColor: '#F3F4F6', // Header abu-abu muda
+                fillColor: '#F3F4F6', 
                 textColor: COLORS.textDark,
                 fontStyle: 'bold',
                 fontSize: 9.5,
