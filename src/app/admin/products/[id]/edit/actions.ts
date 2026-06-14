@@ -2,7 +2,8 @@
 'use server';
 
 import { createClient } from "@/lib/supabase/server";
-import { revalidateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation"; // <-- Mengimpor fungsi redirect
 
 type FormState = {
   message: string | null;
@@ -18,7 +19,24 @@ type VariantFromClient = {
   ram: string;
   storage: string;
   screen_size: string;
-}
+};
+
+type LaptopUpdatePayload = {
+  name: string;
+  brand: string;
+  description: string;
+  image_url?: string;
+};
+
+type VariantPayload = {
+  id?: string;
+  product_id: string;
+  stock: number;
+  processor: string;
+  ram: string;
+  storage: string;
+  screen_size: string;
+};
 
 export async function updateProductAndVariants(prevState: FormState, formData: FormData): Promise<FormState> {
   const supabase = await createClient();
@@ -27,33 +45,73 @@ export async function updateProductAndVariants(prevState: FormState, formData: F
   const variants: VariantFromClient[] = JSON.parse(formData.get('variants') as string);
   const variantsToDelete: string[] = JSON.parse(formData.get('variantsToDelete') as string);
 
-  // 1. Update data produk dasar
-  // MENYESUAIKAN: Mengubah nama tabel ke 'laptops'
-  const { error: productError } = await supabase
-    .from('laptops')
-    .update({
-      name: formData.get('name') as string,
-      brand: formData.get('brand') as string,
-      description: formData.get('description') as string,
-    })
-    .eq('id', productId);
+  // 1. Upload Gambar Baru (Jika Diunggah)
+  const image = formData.get('image') as File | null;
+  let publicUrl = null;
 
-  if (productError) {
-    return { message: "Gagal memperbarui produk dasar: " + productError.message, type: 'error' };
+  if (image && image.size > 0) {
+    const fileExtension = image.name.split('.').pop();
+    const fileName = `${Math.random()}-${Date.now()}.${fileExtension}`;
+    const { error: uploadError } = await supabase.storage.from('product-images').upload(fileName, image);
+
+    if (uploadError) {
+      return { message: "Gagal mengunggah gambar baru: " + uploadError.message, type: 'error' };
+    }
+    publicUrl = supabase.storage.from('product-images').getPublicUrl(fileName).data.publicUrl;
+  }
+
+  // 2. Update data produk dasar (di tabel laptops)
+  const laptopUpdateData: LaptopUpdatePayload = {
+    name: formData.get('name') as string,
+    brand: formData.get('brand') as string,
+    description: formData.get('description') as string,
+  };
+
+  // Masukkan gambar ke data update hanya jika ada file baru yang diunggah
+  if (publicUrl) {
+    laptopUpdateData.image_url = publicUrl;
+  }
+
+  const { error: laptopError } = await supabase
+    .from('laptops')
+    .update(laptopUpdateData)
+    .eq('product_id', productId);
+
+  if (laptopError) {
+    return { message: "Gagal memperbarui produk dasar: " + laptopError.message, type: 'error' };
+  }
+
+  // 3. Update Harga di tabel master (products)
+  if (variants.length > 0) {
+    const mainPrice = Number(String(variants[0].price).replace(/[^0-9]/g, ""));
+    const { error: productError } = await supabase
+      .from('products')
+      .update({ price: mainPrice })
+      .eq('id', productId);
+      
+    if (productError) {
+       return { message: "Gagal memperbarui harga utama: " + productError.message, type: 'error' };
+    }
   }
   
-  // 2. Update atau Insert (Upsert) varian yang ada dan baru
+  // 4. Update atau Insert (Upsert) varian yang ada dan baru
   if (variants.length > 0) {
-    const variantsToUpsert = variants.map((v: VariantFromClient) => ({
-      id: v.id,
-      product_id: productId,
-      price: Number(String(v.price).replace(/[^0-9]/g, "")),
-      stock: Number(v.stock) || 0,
-      processor: v.processor,
-      ram: v.ram,
-      storage: v.storage,
-      screen_size: v.screen_size,
-    }));
+    const variantsToUpsert = variants.map((v: VariantFromClient) => {
+      const payload: VariantPayload = {
+        product_id: productId,
+        stock: Number(v.stock) || 0,
+        processor: v.processor,
+        ram: v.ram,
+        storage: v.storage,
+        screen_size: v.screen_size,
+      };
+      
+      // Jika varian lama (sudah punya id asli dari database), sertakan id-nya untuk di-update
+      if (v.id) {
+        payload.id = v.id;
+      }
+      return payload;
+    });
 
     const { error: upsertError } = await supabase.from('product_variants').upsert(variantsToUpsert);
     if (upsertError) {
@@ -61,7 +119,7 @@ export async function updateProductAndVariants(prevState: FormState, formData: F
     }
   }
 
-  // 3. Hapus varian yang ditandai untuk dihapus
+  // 5. Hapus varian yang ditandai untuk dihapus
   if (variantsToDelete.length > 0) {
     const { error: deleteError = null } = await supabase
       .from('product_variants')
@@ -73,9 +131,12 @@ export async function updateProductAndVariants(prevState: FormState, formData: F
     }
   }
 
-  revalidateTag('products', 'max');
-  revalidateTag(`products/${productId}`, 'max');
-  revalidateTag('dashboard-stats', 'max');
+  // Bersihkan cache agar data terbaru langsung muncul
+  revalidatePath(`/admin/products/${productId}/edit`, 'page');
+  revalidatePath('/admin/products', 'page');
+  revalidatePath('/products', 'page');
+  revalidatePath('/', 'page');
   
-  return { message: 'Produk dan varian berhasil diperbarui!', type: 'success' };
+  // 6. Redirect otomatis ke halaman admin/products jika berhasil
+  redirect('/admin/products');
 }

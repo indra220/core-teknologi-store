@@ -3,8 +3,7 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { useNotification } from '@/components/notifications/NotificationProvider';
-// Perbaikan 1: Ubah import Product menjadi Laptops
-import { Laptops, ProductVariant } from '@/types';
+import { Product, ProductVariant, Laptops } from '@/types';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 
@@ -23,14 +22,13 @@ export interface CartItem {
 
 type CartDataFromServer = {
   quantity: number;
-  // Perbaikan 2: Sesuaikan relasi tabel menggunakan tipe Laptops
-  product_variants: (ProductVariant & { products: Laptops | null }) | null;
+  product_variants: (ProductVariant & { products: (Product & { laptops: Laptops | Laptops[] | null }) | null }) | null;
 }
 
 interface CartContextType {
   cartItems: CartItem[];
-  // Perbaikan 3: Ubah parameter product menjadi Laptops
-  addToCart: (product: Laptops, variant: ProductVariant, quantity: number) => Promise<void>;
+  // Parameter dikembalikan menggunakan Product (tabel induk)
+  addToCart: (product: Product, variant: ProductVariant, quantity: number) => Promise<void>;
   removeFromCart: (variantId: string) => Promise<void>;
   updateQuantity: (variantId: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -56,6 +54,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const fetchCartItems = useCallback(async (userId: string) => {
     setLoading(true);
+    // Perbaikan: Lakukan JOIN ke 3 tabel untuk mengambil nama, brand, dan gambar
     const { data, error } = await supabase
       .from('cart_items')
       .select(`
@@ -63,7 +62,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         product_variants (
           *,
           products (
-            id, name, brand, image_url
+            *,
+            laptops ( * )
           )
         )
       `)
@@ -71,7 +71,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       .returns<CartDataFromServer[]>();
 
     if (error) {
-      console.error("Error fetching cart:", error);
+      console.error("Error fetching cart detail:", error?.message, error?.details, error?.hint);
       setCartItems([]);
     } else if (data) {
       const formattedCart = data
@@ -79,13 +79,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
         .map(item => {
           const variant = item.product_variants!;
           const product = variant.products!;
+          const laptopData = Array.isArray(product.laptops) ? product.laptops[0] : product.laptops;
+          
           return {
             productId: product.id,
             variantId: variant.id,
-            name: product.name,
-            brand: product.brand,
+            name: laptopData?.name || 'Produk Tidak Diketahui',
+            brand: laptopData?.brand || 'Unknown',
             price: variant.price,
-            imageUrl: product.image_url,
+            imageUrl: laptopData?.image_url || null,
             processor: variant.processor,
             ram: variant.ram,
             storage: variant.storage,
@@ -111,8 +113,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, [fetchCartItems, supabase]);
   
-  // Perbaikan 4: Ubah parameter product menjadi Laptops
-  const addToCart = async (product: Laptops, variant: ProductVariant, quantity: number) => {
+  const addToCart = async (product: Product, variant: ProductVariant, quantity: number) => {
     if (!user) return;
     const existingItem = cartItems.find(item => item.variantId === variant.id);
     const newQuantity = (existingItem?.quantity || 0) + quantity;
@@ -121,7 +122,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
         showNotification(`Stok untuk varian ini tidak mencukupi (tersisa ${variant.stock}).`, 'error');
         return;
     }
-    showNotification(`${quantity} "${product.name}" ditambahkan!`, 'success');
+    
+    // Perbaikan: Ekstrak nama produk dari objek laptops
+    const laptopData = Array.isArray(product.laptops) ? product.laptops[0] : product.laptops;
+    showNotification(`${quantity} "${laptopData?.name || 'Produk'}" ditambahkan!`, 'success');
 
     const { error } = await supabase.from('cart_items').upsert({
       user_id: user.id,

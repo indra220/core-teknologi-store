@@ -5,8 +5,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { notFound, useParams } from "next/navigation";
 import EditProductForm from "./EditProductForm";
-// Menggunakan tipe Laptops karena ini yang memiliki relasi varian
-import type { Laptops } from "@/types";
+import type { Product } from "@/types";
 
 function EditProductSkeleton() {
     return (
@@ -24,8 +23,7 @@ export default function EditProductPage() {
     const params = useParams<{ id: string }>();
     const productId = params.id;
 
-    // Menggunakan Laptops untuk state
-    const [product, setProduct] = useState<Laptops | null>(null);
+    const [product, setProduct] = useState<Product | null>(null);
     const [loading, setLoading] = useState(true);
     const [isError, setIsError] = useState(false);
 
@@ -34,10 +32,12 @@ export default function EditProductPage() {
 
         const supabase = createClient();
         const fetchProduct = async () => {
+            // Relasi Paralel: JOIN laptops dan product_variants secara langsung
             const { data, error } = await supabase
                 .from('products')
                 .select(`
                     *,
+                    laptops ( * ),
                     product_variants ( * )
                 `)
                 .eq('id', productId)
@@ -46,7 +46,7 @@ export default function EditProductPage() {
             if (error || !data) {
                 setIsError(true);
             } else {
-                setProduct(data as unknown as Laptops);
+                setProduct(data as unknown as Product);
             }
             setLoading(false);
         };
@@ -62,12 +62,14 @@ export default function EditProductPage() {
         return notFound();
     }
 
+    const laptopData = Array.isArray(product.laptops) ? product.laptops[0] : product.laptops;
+
     return (
         <div className="max-w-4xl mx-auto">
             <header className="mb-8">
                 <h1 className="text-3xl font-extrabold text-gray-900 dark:text-gray-50 tracking-tight">Edit Produk</h1>
                 <p className="mt-2 text-lg text-gray-600 dark:text-gray-300">
-                    Anda sedang mengelola varian dan stok untuk: <span className="font-semibold">{product.name}</span>
+                    Anda sedang mengelola varian dan stok untuk: <span className="font-semibold">{laptopData?.name || 'Produk'}</span>
                 </p>
             </header>
             <EditProductForm product={product} />

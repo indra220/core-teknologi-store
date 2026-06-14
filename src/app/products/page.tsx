@@ -2,19 +2,25 @@
 
 import { createClient } from "@/lib/supabase/server";
 import ProductList from "./ProductList";
-// Perbaikan: Import Laptops bukan Product
-import { Laptops } from "@/types";
+import { Product } from "@/types";
 import { unstable_cache } from "next/cache";
 
-// Perbaikan: Ubah parameter menjadi Laptops[]
-const getFilterCounts = (products: Laptops[]) => {
+const getFilterCounts = (products: Product[]) => {
   const brandCounts = products.reduce((acc, product) => {
-    acc[product.brand] = (acc[product.brand] || 0) + 1;
+    // Perbaikan: Ambil brand dari relasi laptops
+    const laptopData = Array.isArray(product.laptops) ? product.laptops[0] : product.laptops;
+    const brand = laptopData?.brand;
+    
+    if (brand) {
+      acc[brand] = (acc[brand] || 0) + 1;
+    }
     return acc;
   }, {} as Record<string, number>);
 
   return {
-    brands: Object.entries(brandCounts).map(([brand, count]) => ({ brand, count })).sort((a,b) => a.brand.localeCompare(b.brand))
+    brands: Object.entries(brandCounts)
+      .map(([brand, count]) => ({ brand, count }))
+      .sort((a,b) => a.brand.localeCompare(b.brand))
   };
 };
 
@@ -22,11 +28,12 @@ const getCachedProducts = unstable_cache(
   async (supabase) => {
     const { data, error } = await supabase
       .from('products')
-      .select(`*, product_variants ( * )`)
-      .order('name', { ascending: true });
+      // Perbaikan: JOIN ke kedua tabel anak (laptops dan product_variants)
+      .select(`*, laptops(*), product_variants(*)`)
+      // Perbaikan: Urutkan berdasarkan created_at karena 'name' sekarang ada di tabel laptops
+      .order('created_at', { ascending: false });
     
-    // Perbaikan: Cast data menjadi Laptops[]
-    return { products: data as Laptops[] | null, error };
+    return { products: data as Product[] | null, error };
   },
   ['all-products'], 
   {

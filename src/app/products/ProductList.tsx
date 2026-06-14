@@ -6,8 +6,7 @@ import { useState, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import NavigationLoader from '@/components/NavigationLoader'; 
 import Image from 'next/image';
-// Perbaikan: Import Laptops bukan Product
-import { Laptops, ProductVariant } from '@/types';
+import { Product, ProductVariant } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // --- IKON-IKON ---
@@ -59,10 +58,9 @@ const FilterDropdown = ({ title, icon, children, selectionCount }: { title: stri
     </div>
   );
 };
-interface BrandWithCount { brand: string; count: number; }
 
-// Perbaikan: Ubah tipe dari Product[] menjadi Laptops[]
-interface ProductListProps { allProducts: Laptops[]; allBrands: BrandWithCount[]; }
+interface BrandWithCount { brand: string; count: number; }
+interface ProductListProps { allProducts: Product[]; allBrands: BrandWithCount[]; }
 
 const groupProcessor = (processor: string): string => {
   const p = processor.toLowerCase();
@@ -125,7 +123,6 @@ const groupPrice = (price: number): string | null => {
   if (price > 20000000) return '20000001-Infinity';
   return null;
 };
-
 const groupScreenSize = (screenSize: string | null): string | null => {
   if (!screenSize) return null;
   const sizeValue = parseFloat(screenSize.replace(',', '.').match(/(\d+\.?\d*)/)?.[0] || '');
@@ -136,6 +133,7 @@ const groupScreenSize = (screenSize: string | null): string | null => {
   if (sizeValue > 16) return '>16';
   return null;
 };
+
 const STATIC_PROCESSOR_CATEGORIES = [ 'Intel® Core™ i3', 'Intel® Core™ i5', 'Intel® Core™ i7', 'Intel® Core™ i9', 'Intel® Core™ Ultra 5', 'Intel® Core™ Ultra 7', 'Intel® Core™ Ultra 9', 'AMD Ryzen™ 3', 'AMD Ryzen™ 5', 'AMD Ryzen™ 7', 'AMD Ryzen™ 9', 'AMD Ryzen™ AI 9', 'Qualcomm Snapdragon® X Elite', 'Qualcomm Snapdragon® X Plus' ];
 const STATIC_RAM_CATEGORIES = ['4GB', '8GB', '16GB', '32GB'];
 const STATIC_STORAGE_CATEGORIES = ['Less than 256GB', '256GB - 512GB', '1TB and up'];
@@ -188,18 +186,22 @@ export default function ProductList({ allProducts, allBrands }: ProductListProps
     const countProducts = (
       categoryMap: Map<string, number>,
       getGroup: (variant: ProductVariant) => string | null,
-      // Perbaikan: Ubah tipe argumen product di callback
-      getGroupFromProduct?: (product: Laptops) => string 
+      getGroupFromProduct?: (product: Product) => string | null
     ) => {
       const productIdsByCategory = new Map<string, Set<string>>();
 
       allProducts.forEach(product => {
+        // Perbaikan: Ambil varian dengan aman
+        const variants = product.product_variants || [];
+        
         if (getGroupFromProduct) {
           const group = getGroupFromProduct(product);
-          if (!productIdsByCategory.has(group)) productIdsByCategory.set(group, new Set());
-          productIdsByCategory.get(group)!.add(product.id);
+          if (group) {
+            if (!productIdsByCategory.has(group)) productIdsByCategory.set(group, new Set());
+            productIdsByCategory.get(group)!.add(product.id);
+          }
         } else {
-          product.product_variants.forEach(variant => {
+          variants.forEach(variant => {
             const group = getGroup(variant);
             if (group) {
               if (!productIdsByCategory.has(group)) productIdsByCategory.set(group, new Set());
@@ -218,7 +220,12 @@ export default function ProductList({ allProducts, allBrands }: ProductListProps
     countProducts(storageCounts, v => v.storage ? groupStorage(v.storage) : null);
     countProducts(priceCounts, v => groupPrice(v.price));
     countProducts(screenSizeCounts, v => groupScreenSize(v.screen_size));
-    countProducts(graphicsCounts, () => null, p => groupGraphics(p.name, p.product_variants));
+    
+    // Perbaikan: Ambil nama laptop dari relasi untuk filter graphics
+    countProducts(graphicsCounts, () => null, p => {
+      const laptopData = Array.isArray(p.laptops) ? p.laptops[0] : p.laptops;
+      return groupGraphics(laptopData?.name || '', p.product_variants || []);
+    });
 
     return { processorCounts, ramCounts, storageCounts, graphicsCounts, priceCounts, screenSizeCounts };
   }, [allProducts]);
@@ -226,29 +233,59 @@ export default function ProductList({ allProducts, allBrands }: ProductListProps
   const filteredAndSortedProducts = useMemo(() => {
     let products = [...allProducts];
 
-    if (searchTerm) products = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    if (selectedBrands.length > 0) products = products.filter(p => selectedBrands.includes(p.brand));
-    if (selectedProcessors.length > 0) products = products.filter(p => p.product_variants.some(v => v.processor && selectedProcessors.includes(groupProcessor(v.processor))));
-    if (selectedRams.length > 0) products = products.filter(p => p.product_variants.some(v => v.ram && selectedRams.includes(groupRam(v.ram))));
-    if (selectedStorages.length > 0) products = products.filter(p => p.product_variants.some(v => v.storage && selectedStorages.includes(groupStorage(v.storage))));
-    if (selectedGraphics.length > 0) products = products.filter(p => selectedGraphics.includes(groupGraphics(p.name, p.product_variants)));
+    // Filter berdasarkan Search
+    if (searchTerm) {
+      products = products.filter(p => {
+        const laptopData = Array.isArray(p.laptops) ? p.laptops[0] : p.laptops;
+        return laptopData?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+      });
+    }
+
+    // Filter berdasarkan Brand
+    if (selectedBrands.length > 0) {
+      products = products.filter(p => {
+        const laptopData = Array.isArray(p.laptops) ? p.laptops[0] : p.laptops;
+        return selectedBrands.includes(laptopData?.brand || '');
+      });
+    }
+    
+    // Filter berdasarkan Varian
+    if (selectedProcessors.length > 0) {
+      products = products.filter(p => (p.product_variants || []).some(v => v.processor && selectedProcessors.includes(groupProcessor(v.processor))));
+    }
+    if (selectedRams.length > 0) {
+      products = products.filter(p => (p.product_variants || []).some(v => v.ram && selectedRams.includes(groupRam(v.ram))));
+    }
+    if (selectedStorages.length > 0) {
+      products = products.filter(p => (p.product_variants || []).some(v => v.storage && selectedStorages.includes(groupStorage(v.storage))));
+    }
     if (selectedPriceRanges.length > 0) {
-      products = products.filter(p => p.product_variants.some(v => {
+      products = products.filter(p => (p.product_variants || []).some(v => {
         const priceGroup = groupPrice(v.price);
         return priceGroup && selectedPriceRanges.includes(priceGroup);
       }));
     }
     if (selectedScreenSizes.length > 0) {
-        products = products.filter(p => p.product_variants.some(v => {
+        products = products.filter(p => (p.product_variants || []).some(v => {
             const sizeGroup = groupScreenSize(v.screen_size);
             return sizeGroup && selectedScreenSizes.includes(sizeGroup);
         }));
     }
 
-    // Perbaikan: Ubah argumen fungsi ini menggunakan tipe Laptops
-    const getMinPrice = (product: Laptops) => {
-      if (!product.product_variants || product.product_variants.length === 0) return Infinity;
-      return Math.min(...product.product_variants.map(v => v.price));
+    // Filter Graphics yang mengambil nama dari laptops
+    if (selectedGraphics.length > 0) {
+      products = products.filter(p => {
+        const laptopData = Array.isArray(p.laptops) ? p.laptops[0] : p.laptops;
+        const group = groupGraphics(laptopData?.name || '', p.product_variants || []);
+        return selectedGraphics.includes(group);
+      });
+    }
+
+    // Pengurutan Harga
+    const getMinPrice = (product: Product) => {
+      const variants = product.product_variants || [];
+      if (variants.length === 0) return Infinity;
+      return Math.min(...variants.map(v => v.price));
     };
 
     if (sortOrder === 'price-asc') products.sort((a, b) => getMinPrice(a) - getMinPrice(b));
@@ -334,23 +371,23 @@ export default function ProductList({ allProducts, allBrands }: ProductListProps
 
         {filteredAndSortedProducts.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Perbaikan: Ubah iterasi product menggunakan tipe Laptops */}
-            {filteredAndSortedProducts.map((product: Laptops) => {
-              const displayPrice = product.product_variants.length > 0 
-                ? Math.min(...product.product_variants.map(v => v.price)) 
+            {filteredAndSortedProducts.map((product: Product) => {
+              // Perbaikan: Ekstrak laptopData untuk tampilan
+              const laptopData = Array.isArray(product.laptops) ? product.laptops[0] : product.laptops;
+              const variants = product.product_variants || [];
+              const displayPrice = variants.length > 0 
+                ? Math.min(...variants.map(v => v.price)) 
                 : 0;
 
               return (
                 <div key={product.id} className="group bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 border dark:border-gray-700 flex flex-col">
-                  {/* --- PERBAIKAN TOPLOADER DI SINI (1) --- */}
                   <NavigationLoader href={`/laptop/${product.id}`} className="block relative aspect-video overflow-hidden">
-                    <Image src={product.image_url || '/placeholder.png'} alt={product.name} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="(max-width: 768px) 50vw, 33vw"/>
+                    <Image src={laptopData?.image_url || '/placeholder.png'} alt={laptopData?.name || 'Produk'} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="(max-width: 768px) 50vw, 33vw"/>
                   </NavigationLoader>
                   <div className="p-5 flex flex-col flex-grow">
-                    <p className="text-gray-500 dark:text-gray-400 text-sm">{product.brand}</p>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">{laptopData?.brand || '-'}</p>
                     <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 truncate mt-1 flex-grow">
-                      {/* --- PERBAIKAN TOPLOADER DI SINI (2) --- */}
-                      <NavigationLoader href={`/laptop/${product.id}`} className="hover:text-blue-600 dark:hover:text-blue-400">{product.name}</NavigationLoader>
+                      <NavigationLoader href={`/laptop/${product.id}`} className="hover:text-blue-600 dark:hover:text-blue-400">{laptopData?.name || 'Produk'}</NavigationLoader>
                     </h3>
                     <p className="text-2xl font-extrabold text-blue-700 dark:text-blue-400 mt-4">
                       {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(displayPrice)}

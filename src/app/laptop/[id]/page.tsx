@@ -5,8 +5,8 @@ import Image from "next/image";
 import NavigationLoader from "@/components/NavigationLoader";
 import ProductDetailClient from "./ProductDetailClient";
 import { Suspense } from "react";
-// Perbaikan: Import tipe Laptops karena ini yang memiliki relasi product_variants
-import type { Laptops } from "@/types";
+// Perbaikan: Menggunakan tipe Product (Tabel Induk)
+import type { Product } from "@/types";
 import { unstable_cache } from "next/cache";
 
 export const runtime = 'edge';
@@ -31,15 +31,17 @@ function ProductDetailSkeleton() {
   );
 }
 
-// Perbaikan: Ubah tipe parameter menjadi Laptops
-function ProductDetails({ product }: { product: Laptops }) {
+// Perbaikan: Menerima tipe Product, lalu mengekstrak laptopData
+function ProductDetails({ product }: { product: Product }) {
+  const laptopData = Array.isArray(product.laptops) ? product.laptops[0] : product.laptops;
+
   return (
      <div className="bg-white dark:bg-gray-800 p-6 md:p-12 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
         <div className="flex flex-col items-center justify-center p-4">
           <div className="relative w-full aspect-square max-w-lg">
             <Image
-              src={product.image_url || '/placeholder.png'}
-              alt={product.name}
+              src={laptopData?.image_url || '/placeholder.png'}
+              alt={laptopData?.name || 'Gambar Produk'}
               fill
               className="object-contain rounded-lg"
               sizes="(max-width: 1024px) 100vw, 50vw"
@@ -48,12 +50,12 @@ function ProductDetails({ product }: { product: Laptops }) {
           </div>
         </div>
         <div className="flex flex-col">
-          <p className="text-sm text-blue-600 dark:text-blue-400 font-semibold uppercase tracking-wider">{product.brand}</p>
+          <p className="text-sm text-blue-600 dark:text-blue-400 font-semibold uppercase tracking-wider">{laptopData?.brand || '-'}</p>
           <h1 className="mt-2 text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white leading-tight tracking-tight">
-            {product.name}
+            {laptopData?.name || 'Produk Tidak Diketahui'}
           </h1>
           <p className="mt-6 text-base text-gray-600 dark:text-gray-300 leading-relaxed max-w-prose">
-            {product.description || 'Tidak ada deskripsi rinci untuk produk ini.'}
+            {laptopData?.description || 'Tidak ada deskripsi rinci untuk produk ini.'}
           </p>
           <ProductDetailClient product={product} />
         </div>
@@ -61,31 +63,28 @@ function ProductDetails({ product }: { product: Laptops }) {
   );
 }
 
-// Fungsi cache menerima supabase client dan ID sebagai argumen
 const getCachedProductById = unstable_cache(
   async (supabase, id: string) => {
+    // Perbaikan: Melakukan JOIN ke 3 tabel (products, laptops, product_variants)
     const { data, error } = await supabase
       .from('products')
-      .select(`*, product_variants ( * )`)
+      .select(`*, laptops ( * ), product_variants ( * )`)
       .eq('id', id)
       .single();
-    // Perbaikan: Tipe cast menggunakan Laptops
-    return { product: data as Laptops | null, error };
+      
+    return { product: data as unknown as Product | null, error };
   },
   ['product-details'],
   {
-    // Tagging dinamis berdasarkan ID
     tags: ['products'],
   }
 );
 
 export default async function DetailLaptopPage({ params: { id } }: { params: { id: string } }) {
-  // Buat client di luar cache
   const supabase = await createClient();
-  // Panggil fungsi cache dengan argumen
   const { product, error } = await getCachedProductById(supabase, id);
 
-  if (error || !product || product.product_variants.length === 0) {
+  if (error || !product || !product.product_variants || product.product_variants.length === 0) {
     notFound();
   }
 

@@ -2,44 +2,40 @@
 
 export type EmailStatus = 'VERIFIED' | 'PENDING_CHANGE';
 
-// Representasi produk tunggal/flat
-export interface Product {
+export interface Laptops {
   id: string;
-  product_id?: string; 
+  product_id?: string;
   name: string;
   brand: string;
-  price: number;
-  processor: string | null;
-  ram: string | null;
-  storage: string | null;
-  screen_size: string | null;
-  image_url: string | null;
   description: string | null;
-  created_at: string;
+  image_url: string | null;
+  created_at?: string;
 }
 
-// Representasi varian produk sesuai nama tabel di database
 export interface ProductVariant {
   id: string;
-  product_id: string;
+  product_id: string; // <-- Kembali menggunakan product_id
   price: number;
   processor: string | null;
   ram: string | null;
   storage: string | null;
   screen_size: string | null;
   stock: number;
-  created_at: string;
+  created_at?: string;
 }
 
-// Kumpulan produk yang memiliki relasi dengan product_variants (menggunakan snake_case)
-export interface Laptops {
-  id: string;
-  name: string;
-  brand: string;
-  description: string | null;
-  image_url: string | null;
+export interface Product {
+  id: string; 
+  slug: string | null;
+  catagory: string | null; 
+  specs: Record<string, unknown> | null; 
+  is_active: boolean;
   created_at: string;
-  product_variants: ProductVariant[]; // Sinkron dengan key dari response Supabase
+  updated_at: string | null;
+  
+  // -- RELASI PARALEL (Sejajar) --
+  laptops?: Laptops | Laptops[] | null; 
+  product_variants?: ProductVariant[]; 
 }
 
 export interface Profile {

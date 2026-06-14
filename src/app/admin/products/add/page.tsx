@@ -1,7 +1,7 @@
 // src/app/admin/products/add/page.tsx
 'use client';
 
-import { useState, useActionState, useEffect } from "react"; // <-- Impor useEffect
+import { useState, useActionState, useEffect } from "react"; 
 import { useFormStatus } from "react-dom";
 import { addProductWithVariants } from "./actions";
 import Link from "@/components/NavigationLoader";
@@ -28,7 +28,6 @@ function SubmitButton() {
   );
 }
 
-
 export default function AddProductPage() {
   const initialState = { message: null, type: null };
   const [formState, formAction] = useActionState(addProductWithVariants, initialState);
@@ -37,13 +36,11 @@ export default function AddProductPage() {
     { id: Date.now(), price: '', processor: '', ram: '', storage: '', screen_size: '', stock: '0' }
   ]);
 
-  // --- PERBAIKAN TOPLOADER DI SINI ---
   useEffect(() => {
     if (formState?.message) {
       NProgress.done();
     }
   }, [formState]);
-  // --- AKHIR PERBAIKAN ---
 
   const addVariant = () => {
     setVariants([...variants, { id: Date.now(), price: '', processor: '', ram: '', storage: '', screen_size: '', stock: '0' }]);
@@ -111,7 +108,7 @@ export default function AddProductPage() {
         </div>
 
         <div className="mt-8 bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 space-y-8">
-          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Varian Produk</h2>
+          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Varian Produk (Stok & Spesifikasi)</h2>
           {variants.map((variant, index) => (
             <div key={variant.id} className="p-4 border border-gray-300 dark:border-gray-600 rounded-lg space-y-4 relative">
               <h3 className="font-semibold text-gray-800 dark:text-gray-200">Varian {index + 1}</h3>
@@ -121,27 +118,6 @@ export default function AddProductPage() {
                 </button>
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Harga (Rp)</label>
-                    <CurrencyInput 
-                        id={`price-${variant.id}`} 
-                        name={`price-${variant.id}`} 
-                        required 
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500" 
-                        value={variant.price}
-                        onValueChange={(values) => handleVariantChange(variant.id, 'price', values.value)}
-                    />
-                </div>
-                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stok</label>
-                    <input 
-                      type="number" 
-                      value={variant.stock} 
-                      onChange={e => handleVariantChange(variant.id, 'stock', e.target.value)} 
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500" 
-                      min="0" 
-                    />
-                </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Prosesor</label>
                     <input 
@@ -176,6 +152,30 @@ export default function AddProductPage() {
                       value={variant.screen_size} 
                       onChange={e => handleVariantChange(variant.id, 'screen_size', e.target.value)} 
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500" 
+                    />
+                </div>
+                {/* Posisi Stok Dipindahkan ke Sini (Setelah Ukuran Layar) */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stok</label>
+                    <input 
+                      type="number" 
+                      value={variant.stock} 
+                      onChange={e => handleVariantChange(variant.id, 'stock', e.target.value)} 
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500" 
+                      min="0" 
+                      required
+                    />
+                </div>
+                {/* Posisi Harga Dipindahkan ke Sini (Paling Akhir) */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Harga (Rp)</label>
+                    <CurrencyInput 
+                        id={`price-${variant.id}`} 
+                        name={`price-${variant.id}`} 
+                        required 
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500" 
+                        value={variant.price}
+                        onValueChange={(values) => handleVariantChange(variant.id, 'price', values.value)}
                     />
                 </div>
               </div>

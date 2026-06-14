@@ -1,15 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
+    unoptimized: true, // <-- Tambahkan baris ini untuk mem-bypass pemblokiran Private IP
     remotePatterns: [
       {
         protocol: 'https',
-        // Ganti 'abcdefg.supabase.co' dengan URL Supabase Anda
-        hostname: 'https://vnhawrausejdwkozsonv.supabase.co', 
+        hostname: 'vnhawrausejdwkozsonv.supabase.co', 
       },
       {
         protocol: 'https',
-        // Mengizinkan pengambilan gambar avatar otomatis
         hostname: 'ui-avatars.com', 
       },
     ],

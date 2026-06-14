@@ -2,8 +2,8 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from '@/components/NavigationLoader';
 import Image from 'next/image';
-// Perbaikan: Import tipe Laptops karena ini yang memiliki array product_variants
-import { Laptops } from "@/types";
+// Perbaikan: Menggunakan tipe Product yang merupakan tabel induk
+import { Product } from "@/types";
 import { redirect } from 'next/navigation';
 import { unstable_cache } from "next/cache";
 
@@ -14,7 +14,7 @@ type OrderItemSummary = {
   quantity: number;
 };
 
-// Fungsi cache sekarang menerima 'supabase' sebagai argumen
+// Fungsi cache menerima 'supabase' sebagai argumen
 const getCachedBestSellingProducts = unstable_cache(
   async (supabase, limit: number) => {
     const { data: orderItems, error: orderItemsError } = await supabase
@@ -41,15 +41,17 @@ const getCachedBestSellingProducts = unstable_cache(
     if (topProductIds.length === 0) {
       const { data: latestProducts } = await supabase
         .from('products')
-        .select(`*, product_variants(price)`)
+        // Perbaikan: JOIN ke tabel laptops dan product_variants
+        .select(`*, laptops(*), product_variants(price)`)
         .order('created_at', { ascending: false })
         .limit(limit);
-      return latestProducts || [];
+      return (latestProducts as unknown as Product[]) || [];
     }
 
     const { data: bestSellers, error: bestSellersError } = await supabase
       .from('products')
-      .select(`*, product_variants(price)`)
+      // Perbaikan: JOIN ke tabel laptops dan product_variants
+      .select(`*, laptops(*), product_variants(price)`)
       .in('id', topProductIds);
 
     if (bestSellersError) {
@@ -57,18 +59,17 @@ const getCachedBestSellingProducts = unstable_cache(
       return [];
     }
     
-    // Perbaikan: Ubah tipe Product menjadi Laptops
-    return bestSellers.sort((a: Laptops, b: Laptops) => productSales[b.id] - productSales[a.id]);
+    // Perbaikan: Urutkan data berdasarkan Product
+    return (bestSellers as unknown as Product[]).sort((a: Product, b: Product) => productSales[b.id] - productSales[a.id]);
   },
-  ['best-selling-products'], // Kunci cache unik
+  ['best-selling-products'], 
   {
-    tags: ['products'], // Tag untuk revalidasi
+    tags: ['products'], 
   }
 );
 
-
 export default async function HomePage() {
-  const supabase = await createClient(); // <-- Buat client di luar cache
+  const supabase = await createClient(); 
   const { data: { user } } = await supabase.auth.getUser();
 
   if (user) {
@@ -83,7 +84,6 @@ export default async function HomePage() {
     }
   }
 
-  // Panggil fungsi cache dengan melemparkan 'supabase' dan 'limit'
   const products = await getCachedBestSellingProducts(supabase, 4);
 
   return (
@@ -110,8 +110,10 @@ export default async function HomePage() {
         </div>
         {products.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {/* Perbaikan: Ubah deklarasi map dari Product menjadi Laptops */}
-            {products.map((product: Laptops) => {
+            {products.map((product: Product) => {
+              // Perbaikan: Ekstrak informasi dari tabel laptops karena ini adalah data relasi
+              const laptopData = Array.isArray(product.laptops) ? product.laptops[0] : product.laptops;
+
               const displayPrice = product.product_variants && product.product_variants.length > 0
                 ? Math.min(...product.product_variants.map(v => v.price))
                 : 0;
@@ -120,17 +122,19 @@ export default async function HomePage() {
                 <div key={product.id} className="group bg-white dark:bg-gray-800 rounded-2xl shadow-lg dark:shadow-2xl dark:shadow-gray-950 overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 border border-gray-100 dark:border-gray-700 flex flex-col">
                   <Link href={`/laptop/${product.id}`} className="block relative aspect-video overflow-hidden">
                     <Image
-                      src={product.image_url || '/placeholder.png'}
-                      alt={product.name}
+                      src={laptopData?.image_url || '/placeholder.png'}
+                      alt={laptopData?.name || 'Produk'}
                       fill
                       className="object-cover transition-transform duration-500 group-hover:scale-110"
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                     />
                   </Link>
                   <div className="p-5 flex flex-col flex-grow">
-                    <p className="text-gray-500 dark:text-gray-400 text-sm">{product.brand}</p>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">{laptopData?.brand || '-'}</p>
                     <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 truncate mt-1 flex-grow">
-                      <Link href={`/laptop/${product.id}`} className="hover:text-blue-600 dark:hover:text-blue-400">{product.name}</Link>
+                      <Link href={`/laptop/${product.id}`} className="hover:text-blue-600 dark:hover:text-blue-400">
+                        {laptopData?.name || 'Produk Tanpa Nama'}
+                      </Link>
                     </h3>
                     <p className="text-2xl font-extrabold text-blue-700 dark:text-blue-400 mt-4">
                       {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(displayPrice)}

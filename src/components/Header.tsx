@@ -15,7 +15,6 @@ import { markNotificationAsRead, deleteNotification } from '@/lib/actions/notifi
 import { useSession } from '@/context/SessionContext';
 import NProgress from 'nprogress';
 
-// ... (kode ikon dan helper tidak berubah) ...
 interface Notification {
   id: string;
   message: string;
@@ -60,8 +59,8 @@ const timeAgo = (date: string) => {
 
 
 export default function Header() {
-    const { user, profile, notifications, refreshSession } = useSession();
-    const pathname = usePathname();
+  const { user, profile, notifications, refreshSession } = useSession();
+  const pathname = usePathname();
   
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -134,8 +133,6 @@ export default function Header() {
     localStorage.removeItem('sessionStartTime');
     localStorage.removeItem('userRole');
     await supabase.auth.signOut();
-    // --- PERBAIKAN DI SINI ---
-    // Gunakan window.location untuk memaksa hard refresh
     window.location.assign('/login?message=logout_success');
   };
 
@@ -274,17 +271,22 @@ export default function Header() {
                 <div className="border-t dark:border-gray-700 mt-2 pt-2">
                     {isSearching ? <p className="text-center p-4 text-gray-500">Mencari...</p> : (
                         <ul className="max-h-80 overflow-y-auto">
-                            {suggestedProducts.map(product => (
-                                <li key={product.id}>
-                                <Link href={`/laptop/${product.id}`} onClick={() => setIsSearchOpen(false)} className="flex items-center p-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors">
-                                    <Image src={product.image_url || '/placeholder.png'} alt={product.name} width={48} height={48} className="w-12 h-12 object-cover rounded-md" />
-                                    <div className="ml-4">
-                                    <p className="font-semibold text-gray-900 dark:text-gray-100">{product.name}</p>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400">{product.brand}</p>
-                                    </div>
-                                </Link>
-                                </li>
-                            ))}
+                            {suggestedProducts.map(product => {
+                                // Ekstraksi relasi laptop untuk pencarian
+                                const laptopData = Array.isArray(product.laptops) ? product.laptops[0] : product.laptops;
+                                
+                                return (
+                                  <li key={product.id}>
+                                  <Link href={`/laptop/${product.id}`} onClick={() => setIsSearchOpen(false)} className="flex items-center p-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors">
+                                      <Image src={laptopData?.image_url || '/placeholder.png'} alt={laptopData?.name || 'Produk'} width={48} height={48} className="w-12 h-12 object-cover rounded-md" />
+                                      <div className="ml-4">
+                                      <p className="font-semibold text-gray-900 dark:text-gray-100">{laptopData?.name || 'Produk'}</p>
+                                      <p className="text-sm text-gray-600 dark:text-gray-400">{laptopData?.brand || '-'}</p>
+                                      </div>
+                                  </Link>
+                                  </li>
+                                )
+                            })}
                         </ul>
                     )}
                 </div>

@@ -1,18 +1,24 @@
 // src/app/admin/products/[id]/edit/EditProductForm.tsx
 'use client';
 
-import { useState, useEffect } from "react";
-import { useActionState } from "react";
+import { useState, useEffect, useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "@/components/NavigationLoader";
+import Image from "next/image"; // Mengimpor komponen Image dari Next.js
 import CurrencyInput from '@/components/CurrencyInput';
 import { TrashIcon, PlusCircleIcon } from '@heroicons/react/24/outline';
 import { updateProductAndVariants } from "./actions";
-// Menggunakan tipe Laptops karena ini yang memiliki relasi varian
-import type { Laptops, ProductVariant } from "@/types";
+import type { Product as BaseProduct, ProductVariant } from "@/types";
 import NProgress from 'nprogress';
 
-type ClientVariant = Partial<ProductVariant> & { tempId: number };
+type ExtendedProduct = BaseProduct & {
+  price: number;
+};
+
+type ClientVariant = Partial<ProductVariant> & { 
+  tempId: number; 
+  price: number | string; 
+};
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -23,17 +29,22 @@ function SubmitButton() {
   );
 }
 
-// Props menggunakan tipe Laptops
-export default function EditProductForm({ product }: { product: Laptops }) {
+export default function EditProductForm({ product }: { product: ExtendedProduct }) {
   const initialState = { message: null, type: null };
   const [formState, formAction] = useActionState(updateProductAndVariants, initialState);
   
   const [variants, setVariants] = useState<ClientVariant[]>([]);
   const [variantsToDelete, setVariantsToDelete] = useState<string[]>([]);
 
+  const laptopData = Array.isArray(product.laptops) ? product.laptops[0] : product.laptops;
+
   useEffect(() => {
     if (product.product_variants) {
-      setVariants(product.product_variants.map(v => ({ ...v, tempId: Math.random() })));
+      setVariants(product.product_variants.map(v => ({ 
+        ...v, 
+        price: product.price || 0, 
+        tempId: Math.random() 
+      })));
     }
   }, [product]);
 
@@ -46,7 +57,7 @@ export default function EditProductForm({ product }: { product: Laptops }) {
   const addVariant = () => {
     setVariants([...variants, {
       tempId: Date.now(),
-      price: 0,
+      price: product.price || 0, 
       processor: '',
       ram: '',
       storage: '',
@@ -73,21 +84,45 @@ export default function EditProductForm({ product }: { product: Laptops }) {
   return (
     <form action={formAction} onSubmit={() => NProgress.start()}>
       <input type="hidden" name="productId" value={product.id} />
+      {laptopData?.id && <input type="hidden" name="laptopId" value={laptopData.id} />}
       
       <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 space-y-6">
         <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Informasi Produk Dasar</h2>
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Produk</label>
-          <input id="name" type="text" name="name" defaultValue={product.name} required className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+          <input id="name" type="text" name="name" defaultValue={laptopData?.name || ''} required className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
         </div>
         <div>
           <label htmlFor="brand" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Brand</label>
-          <input id="brand" type="text" name="brand" defaultValue={product.brand} required className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+          <input id="brand" type="text" name="brand" defaultValue={laptopData?.brand || ''} required className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
         </div>
-         <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Deskripsi</label>
-            <textarea id="description" name="description" rows={4} defaultValue={product.description || ''} className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></textarea>
-          </div>
+        <div>
+          <label htmlFor="image" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Gambar Produk</label>
+          {laptopData?.image_url && (
+            <div className="mb-3 flex items-center gap-4">
+              {/* Perbaikan menggunakan komponen <Image /> dari Next.js */}
+              <Image 
+                src={laptopData.image_url} 
+                alt="Gambar Saat Ini" 
+                width={64} 
+                height={64} 
+                className="h-16 w-16 object-cover rounded-md border border-gray-300 dark:border-gray-600" 
+              />
+              <span className="text-xs text-gray-500 dark:text-gray-400">Gambar saat ini. Unggah file baru untuk mengganti.</span>
+            </div>
+          )}
+          <input 
+            id="image" 
+            type="file" 
+            name="image" 
+            accept="image/*" 
+            className="w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-700 dark:file:text-gray-200"
+          />
+        </div>
+        <div>
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Deskripsi</label>
+          <textarea id="description" name="description" rows={4} defaultValue={laptopData?.description || ''} className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></textarea>
+        </div>
       </div>
 
       <div className="mt-8 bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 space-y-8">
@@ -99,18 +134,6 @@ export default function EditProductForm({ product }: { product: Laptops }) {
               <TrashIcon className="w-5 h-5"/>
             </button>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-               <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Harga (Rp)</label>
-                  <CurrencyInput 
-                      id={`price-${variant.tempId}`} name={`price-${variant.tempId}`} required className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
-                      defaultValue={variant.price}
-                      onValueChange={(values) => handleVariantChange(variant.tempId, 'price', values.value)}
-                  />
-              </div>
-              <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stok</label>
-                  <input type="number" value={variant.stock || 0} onChange={e => handleVariantChange(variant.tempId, 'stock', Number(e.target.value))} className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white" min="0" />
-              </div>
               <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Prosesor</label>
                   <input type="text" value={variant.processor || ''} onChange={e => handleVariantChange(variant.tempId, 'processor', e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
@@ -126,6 +149,18 @@ export default function EditProductForm({ product }: { product: Laptops }) {
               <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ukuran Layar</label>
                   <input type="text" value={variant.screen_size || ''} onChange={e => handleVariantChange(variant.tempId, 'screen_size', e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+              </div>
+              <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stok</label>
+                  <input type="number" value={variant.stock || 0} onChange={e => handleVariantChange(variant.tempId, 'stock', Number(e.target.value))} className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white" min="0" required />
+              </div>
+              <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Harga Utama (Rp)</label>
+                  <CurrencyInput 
+                      id={`price-${variant.tempId}`} name={`price-${variant.tempId}`} required className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+                      defaultValue={variant.price}
+                      onValueChange={(values) => handleVariantChange(variant.tempId, 'price', values.value)}
+                  />
               </div>
             </div>
           </div>
