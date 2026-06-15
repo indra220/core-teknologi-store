@@ -34,6 +34,21 @@ export default function EditProfileForm({ user, profile }: { user: User, profile
   const [avatarPreview, setAvatarPreview] = useState<string | null>(profile.avatar_url);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Parsing JSON alamat dari profil jika ada
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let addr: any = {};
+  if (profile.address_detail) {
+      if (typeof profile.address_detail === 'string') {
+          try {
+              addr = JSON.parse(profile.address_detail);
+          } catch (_e) {
+              addr = { address_line_1: profile.address_detail };
+          }
+      } else {
+          addr = profile.address_detail;
+      }
+  }
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
@@ -106,11 +121,26 @@ export default function EditProfileForm({ user, profile }: { user: User, profile
             </div>
         </div>
         
+        {/* Form Alamat Terstruktur */}
         <div className="p-6 border border-gray-200 dark:border-gray-700 rounded-lg space-y-4">
             <h3 className="font-bold text-lg mb-4 text-gray-800 dark:text-gray-100">Alamat Pengiriman</h3>
-            <div>
-              <label htmlFor="address_detail" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Detail Alamat / Patokan</label>
-              <textarea id="address_detail" name="address_detail" rows={3} defaultValue={profile.address_detail || ''} placeholder="Contoh: Jln. Mawar No. 5, Rumah cat hijau pagar hitam" className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></textarea>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label htmlFor="address_line_1" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Alamat Lengkap</label>
+                  <textarea id="address_line_1" name="address_line_1" rows={3} defaultValue={addr?.address_line_1 || ''} placeholder="Contoh: Jln. Mawar No. 5" className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></textarea>
+                </div>
+                <div>
+                  <label htmlFor="city" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kota / Kabupaten</label>
+                  <input id="city" type="text" name="city" defaultValue={addr?.city || ''} placeholder="Contoh: Tasikmalaya" className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                </div>
+                <div>
+                  <label htmlFor="province" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Provinsi</label>
+                  <input id="province" type="text" name="province" defaultValue={addr?.province || ''} placeholder="Contoh: Jawa Barat" className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                </div>
+                <div className="md:col-span-2">
+                  <label htmlFor="postal_code" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kode Pos</label>
+                  <input id="postal_code" type="text" name="postal_code" defaultValue={addr?.postal_code || ''} placeholder="Contoh: 46115" className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                </div>
             </div>
         </div>
 
@@ -120,14 +150,11 @@ export default function EditProfileForm({ user, profile }: { user: User, profile
           <input id="currentPassword" type="password" name="currentPassword" required className="w-full px-4 py-2 border border-red-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-red-600 dark:text-white focus:ring-2 focus:ring-red-500" />
         </div>
 
-        {/* ========================================================================= */}
-        {/* <-- PERBAIKAN UTAMA: Hanya tampilkan pesan jika tipenya 'error' --> */}
         {formState?.type === 'error' && formState.message && (
           <div className="p-3 rounded-lg text-sm bg-red-50 text-red-700">
             {formState.message}
           </div>
         )}
-        {/* ========================================================================= */}
         
         <div className="flex flex-col sm:flex-row gap-4 pt-4">
           <Link href="/profile" className="w-full text-center py-3 px-4 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300 font-semibold dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</Link>

@@ -7,26 +7,35 @@ import { cancelOrder } from './actions';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { useSession } from '@/context/SessionContext';
-import NProgress from 'nprogress'; // <-- Impor NProgress
+import NProgress from 'nprogress'; 
+import { useRouter } from 'next/navigation'; // <-- 1. Impor useRouter
 
 export default function CancelOrderButton({ orderId }: { orderId: string }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const { showNotification } = useNotification();
   const { refreshSession } = useSession();
+  const router = useRouter(); // <-- 2. Inisialisasi router
 
   const handleConfirmCancel = async () => {
     setIsCancelling(true);
-    NProgress.start(); // <-- Mulai TopLoader
+    NProgress.start(); 
+    
     const result = await cancelOrder(orderId);
     
     if (result.success) {
-      await refreshSession();
+      if (refreshSession) {
+          await refreshSession(); // Memperbarui data saldo di navbar/session
+      }
       showNotification(result.message, 'success');
+      
+      router.refresh(); // <-- 3. PERBAIKAN: Memaksa halaman me-refresh data pesanan dari server
+      
     } else {
       showNotification(result.message, 'error');
     }
-    NProgress.done(); // <-- Hentikan TopLoader
+    
+    NProgress.done(); 
     setIsModalOpen(false);
     setIsCancelling(false);
   };
@@ -65,7 +74,7 @@ export default function CancelOrderButton({ orderId }: { orderId: string }) {
                   Konfirmasi Pembatalan
                 </h3>
                 <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                  Apakah Anda yakin ingin membatalkan pesanan ini? Stok produk akan dikembalikan dan tindakan ini tidak dapat diurungkan.
+                  Apakah Anda yakin ingin membatalkan pesanan ini? Saldo Anda akan dikembalikan dan tindakan ini tidak dapat diurungkan.
                 </p>
               </div>
 

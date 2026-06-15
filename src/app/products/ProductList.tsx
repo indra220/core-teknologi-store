@@ -6,8 +6,11 @@ import { useState, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import NavigationLoader from '@/components/NavigationLoader'; 
 import Image from 'next/image';
-import { Product, ProductVariant } from '@/types';
+import { Product as BaseProduct, ProductVariant } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// Penyesuaian TypeScript agar mengenali price di tabel induk
+type Product = BaseProduct & { price?: number };
 
 // --- IKON-IKON ---
 const ChevronDownIcon = () => <svg className="h-5 w-5 transition-transform" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>;
@@ -191,7 +194,6 @@ export default function ProductList({ allProducts, allBrands }: ProductListProps
       const productIdsByCategory = new Map<string, Set<string>>();
 
       allProducts.forEach(product => {
-        // Perbaikan: Ambil varian dengan aman
         const variants = product.product_variants || [];
         
         if (getGroupFromProduct) {
@@ -218,10 +220,11 @@ export default function ProductList({ allProducts, allBrands }: ProductListProps
     countProducts(processorCounts, v => v.processor ? groupProcessor(v.processor) : null);
     countProducts(ramCounts, v => v.ram ? groupRam(v.ram) : null);
     countProducts(storageCounts, v => v.storage ? groupStorage(v.storage) : null);
-    countProducts(priceCounts, v => groupPrice(v.price));
     countProducts(screenSizeCounts, v => groupScreenSize(v.screen_size));
     
-    // Perbaikan: Ambil nama laptop dari relasi untuk filter graphics
+    // Perbaikan: Harga sekarang dihitung dari tabel master product
+    countProducts(priceCounts, () => null, p => groupPrice(p.price || 0));
+    
     countProducts(graphicsCounts, () => null, p => {
       const laptopData = Array.isArray(p.laptops) ? p.laptops[0] : p.laptops;
       return groupGraphics(laptopData?.name || '', p.product_variants || []);
@@ -233,7 +236,6 @@ export default function ProductList({ allProducts, allBrands }: ProductListProps
   const filteredAndSortedProducts = useMemo(() => {
     let products = [...allProducts];
 
-    // Filter berdasarkan Search
     if (searchTerm) {
       products = products.filter(p => {
         const laptopData = Array.isArray(p.laptops) ? p.laptops[0] : p.laptops;
@@ -241,7 +243,6 @@ export default function ProductList({ allProducts, allBrands }: ProductListProps
       });
     }
 
-    // Filter berdasarkan Brand
     if (selectedBrands.length > 0) {
       products = products.filter(p => {
         const laptopData = Array.isArray(p.laptops) ? p.laptops[0] : p.laptops;
@@ -249,7 +250,6 @@ export default function ProductList({ allProducts, allBrands }: ProductListProps
       });
     }
     
-    // Filter berdasarkan Varian
     if (selectedProcessors.length > 0) {
       products = products.filter(p => (p.product_variants || []).some(v => v.processor && selectedProcessors.includes(groupProcessor(v.processor))));
     }
@@ -259,12 +259,15 @@ export default function ProductList({ allProducts, allBrands }: ProductListProps
     if (selectedStorages.length > 0) {
       products = products.filter(p => (p.product_variants || []).some(v => v.storage && selectedStorages.includes(groupStorage(v.storage))));
     }
+    
+    // Perbaikan: Filter rentang harga membaca product.price dari master
     if (selectedPriceRanges.length > 0) {
-      products = products.filter(p => (p.product_variants || []).some(v => {
-        const priceGroup = groupPrice(v.price);
+      products = products.filter(p => {
+        const priceGroup = groupPrice(p.price || 0);
         return priceGroup && selectedPriceRanges.includes(priceGroup);
-      }));
+      });
     }
+    
     if (selectedScreenSizes.length > 0) {
         products = products.filter(p => (p.product_variants || []).some(v => {
             const sizeGroup = groupScreenSize(v.screen_size);
@@ -272,7 +275,6 @@ export default function ProductList({ allProducts, allBrands }: ProductListProps
         }));
     }
 
-    // Filter Graphics yang mengambil nama dari laptops
     if (selectedGraphics.length > 0) {
       products = products.filter(p => {
         const laptopData = Array.isArray(p.laptops) ? p.laptops[0] : p.laptops;
@@ -281,20 +283,13 @@ export default function ProductList({ allProducts, allBrands }: ProductListProps
       });
     }
 
-    // Pengurutan Harga
-    const getMinPrice = (product: Product) => {
-      const variants = product.product_variants || [];
-      if (variants.length === 0) return Infinity;
-      return Math.min(...variants.map(v => v.price));
-    };
-
-    if (sortOrder === 'price-asc') products.sort((a, b) => getMinPrice(a) - getMinPrice(b));
-    else if (sortOrder === 'price-desc') products.sort((a, b) => getMinPrice(b) - getMinPrice(a));
+    // Perbaikan: Pengurutan Harga dari tabel master product.price
+    if (sortOrder === 'price-asc') products.sort((a, b) => (a.price || 0) - (b.price || 0));
+    else if (sortOrder === 'price-desc') products.sort((a, b) => (b.price || 0) - (a.price || 0));
 
     return products;
   }, [searchTerm, selectedBrands, selectedPriceRanges, selectedScreenSizes, selectedProcessors, selectedRams, selectedStorages, selectedGraphics, sortOrder, allProducts]);
   
-
   return (
     <div className="flex flex-col md:flex-row gap-8">
       <aside className="w-full md:w-1/4 lg:w-1/5">
@@ -372,12 +367,10 @@ export default function ProductList({ allProducts, allBrands }: ProductListProps
         {filteredAndSortedProducts.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredAndSortedProducts.map((product: Product) => {
-              // Perbaikan: Ekstrak laptopData untuk tampilan
               const laptopData = Array.isArray(product.laptops) ? product.laptops[0] : product.laptops;
-              const variants = product.product_variants || [];
-              const displayPrice = variants.length > 0 
-                ? Math.min(...variants.map(v => v.price)) 
-                : 0;
+              
+              // Perbaikan: Harga langsung dari tabel master (product)
+              const displayPrice = product.price || 0;
 
               return (
                 <div key={product.id} className="group bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 border dark:border-gray-700 flex flex-col">

@@ -1,5 +1,4 @@
 // src/context/PayPalProvider.tsx
-
 'use client';
 
 import { PayPalScriptProvider } from "@paypal/react-paypal-js";
@@ -18,7 +17,6 @@ export function PayPalProvider({ children }: PayPalProviderProps) {
   }
 
   const initialOptions = {
-    // PERBAIKAN: Ubah "client-id" menjadi clientId
     clientId: payPalClientId,
     currency: "USD",
     intent: "capture",

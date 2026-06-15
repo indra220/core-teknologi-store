@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useParams } from "next/navigation";
-import { Order } from "@/types";
+import { Order, Product, Laptops } from "@/types";
 import Link from "@/components/NavigationLoader";
 import Image from "next/image";
 import UpdateStatusForm from "./UpdateStatusForm";
@@ -51,6 +51,10 @@ export default function OrderDetailPage() {
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // 1. PERBAIKAN: Menambahkan state untuk memicu pengambilan data ulang
+  const [refreshTrigger, setRefreshTrigger] = useState(0); 
+  
   const supabase = createClient();
 
   useEffect(() => {
@@ -58,22 +62,65 @@ export default function OrderDetailPage() {
 
     async function getOrderDetails() {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      const { data: orderData, error: orderError } = await supabase
         .from('orders')
-        .select(`*, user_id, profiles (username, full_name, email), order_items (*, products (name, image_url))`)
+        .select(`
+          *, 
+          profiles (username, full_name, email), 
+          order_items (*)
+        `)
         .eq('id', orderId)
         .single();
 
-      if (error || !data) {
-        console.error("Error fetching order:", error);
-      } else {
-        setOrder(data as unknown as Order);
+      if (orderError || !orderData) {
+        console.error("Error fetching order:", orderError?.message || orderError);
+        setLoading(false);
+        return;
       }
+
+      type OrderItemBase = { product_id: string; [key: string]: unknown };
+
+      const productIds = Array.from(new Set(
+        orderData.order_items.map((item: OrderItemBase) => item.product_id).filter(Boolean)
+      )) as string[];
+
+      let laptopsMap: Record<string, string> = {};
+      if (productIds.length > 0) {
+        const { data: laptops } = await supabase
+          .from('laptops')
+          .select('product_id, image_url')
+          .in('product_id', productIds);
+          
+        if (laptops) {
+          laptopsMap = laptops.reduce((acc, laptop) => {
+            if (laptop.product_id && laptop.image_url) {
+              acc[laptop.product_id] = laptop.image_url;
+            }
+            return acc;
+          }, {} as Record<string, string>);
+        }
+      }
+
+      const formattedOrder = {
+        ...orderData,
+        order_items: orderData.order_items.map((item: OrderItemBase) => ({
+          ...item,
+          products: {
+            laptops: [
+              { image_url: laptopsMap[item.product_id] || null }
+            ]
+          }
+        }))
+      };
+
+      setOrder(formattedOrder as unknown as Order);
       setLoading(false);
     }
 
     getOrderDetails();
-  }, [orderId, supabase]);
+  // 2. PERBAIKAN: Masukkan refreshTrigger ke dalam array dependensi useEffect
+  }, [orderId, supabase, refreshTrigger]);
 
   if (loading) {
     return <OrderDetailSkeleton />;
@@ -108,25 +155,32 @@ export default function OrderDetailPage() {
                     Item Pesanan ({order.order_items.length})
                 </h2>
                 <ul className="divide-y divide-gray-200 dark:divide-gray-600">
-                    {order.order_items.map(item => (
-                        <li key={item.id} className="flex py-4">
-                            {/* Perbaikan pada pemanggilan image_url dan product_name */}
-                            <Image 
-                                src={item.product_image_url || item.products?.image_url || '/placeholder.png'} 
-                                alt={item.product_name || 'Gambar Produk'} 
-                                width={80} 
-                                height={80} 
-                                className="h-20 w-20 rounded-lg object-cover border dark:border-gray-600"
-                            />
-                            <div className="ml-4 flex-grow">
-                                <p className="font-semibold text-gray-900 dark:text-gray-50">{item.product_name}</p>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">{item.quantity} x {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.price)}</p>
-                            </div>
-                            <p className="text-lg font-bold text-gray-900 dark:text-gray-50">
-                                {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.price * item.quantity)}
-                            </p>
-                        </li>
-                    ))}
+                    {order.order_items.map(item => {
+                        const productsData = item.products as (Product & { laptops: Laptops | Laptops[] | null }) | null;
+                        const laptopData = productsData?.laptops 
+                            ? (Array.isArray(productsData.laptops) ? productsData.laptops[0] : productsData.laptops) 
+                            : null;
+                        const imageUrl = laptopData?.image_url || '/placeholder.png';
+
+                        return (
+                          <li key={item.id} className="flex py-4">
+                              <Image 
+                                  src={imageUrl} 
+                                  alt={item.product_name || 'Gambar Produk'} 
+                                  width={80} 
+                                  height={80} 
+                                  className="h-20 w-20 rounded-lg object-cover border dark:border-gray-600"
+                              />
+                              <div className="ml-4 flex-grow">
+                                  <p className="font-semibold text-gray-900 dark:text-gray-50">{item.product_name}</p>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400">{item.quantity} x {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.price)}</p>
+                              </div>
+                              <p className="text-lg font-bold text-gray-900 dark:text-gray-50">
+                                  {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.price * item.quantity)}
+                              </p>
+                          </li>
+                        );
+                    })}
                 </ul>
                 <div className="flex justify-end text-xl font-extrabold text-gray-900 dark:text-gray-50 border-t dark:border-gray-600 mt-4 pt-4">
                     Total: {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(order.total_amount)}
@@ -136,7 +190,12 @@ export default function OrderDetailPage() {
 
         <div className="lg:col-span-1 space-y-6">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border dark:border-gray-700">
-                <UpdateStatusForm order={order} />
+                {/* 3. PERBAIKAN: Gunakan key={order.status} agar form di-reset total, dan lempar fungsi setRefreshTrigger */}
+                <UpdateStatusForm 
+                    key={order.status} 
+                    order={order} 
+                    onSuccess={() => setRefreshTrigger(prev => prev + 1)} 
+                />
             </div>
             <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border dark:border-gray-700">
                 <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2 mb-4">

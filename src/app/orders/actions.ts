@@ -17,9 +17,10 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
     return { success: false, message: "Anda harus login untuk membatalkan pesanan." };
   }
 
+  // PERBAIKAN: Menambahkan paypal_order_id ke dalam select()
   const { data: order, error: fetchError } = await supabase
     .from('orders')
-    .select('status, user_id')
+    .select('status, user_id, paypal_order_id')
     .eq('id', orderId)
     .single();
 
@@ -35,6 +36,7 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
     return { success: false, message: `Pesanan dengan status "${order.status}" tidak dapat dibatalkan.` };
   }
 
+  // Memanggil fungsi SQL yang akan membatalkan, me-refund saldo, dan mengembalikan stok
   const { error: rpcError } = await supabase.rpc('cancel_order_and_refund_to_wallet', {
     order_id_to_cancel: orderId,
     new_status: 'Dibatalkan'
@@ -42,12 +44,15 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
 
   if (rpcError) {
     console.error('RPC Error saat membatalkan pesanan:', rpcError);
-    return { success: false, message: "Gagal membatalkan pesanan dan mengembalikan dana. Silakan coba lagi." };
+    return { success: false, message: "Gagal membatalkan pesanan. Silakan coba lagi." };
   }
+  
+  // PERBAIKAN: Gunakan paypal_order_id untuk notifikasi pembatalan
+  const displayOrderId = order.paypal_order_id || orderId.substring(0, 8);
   
   await supabase.from('notifications').insert({
       user_id: user.id,
-      message: `Pesanan Anda #${orderId.substring(0, 8)} telah dibatalkan. Dana telah dikembalikan ke dompet Anda.`,
+      message: `Pesanan Anda #${displayOrderId} telah dibatalkan. Dana telah dikembalikan ke dompet Anda.`,
       link: '/orders',
   });
 
@@ -89,16 +94,15 @@ export async function confirmOrderReceived(orderId: string): Promise<ActionResul
         .from('orders')
         .update({ status: 'Selesai' })
         .eq('id', orderId)
-        .select()
-        .single();
+        .select(); 
 
     if (updateError) {
         console.error("Supabase update error:", updateError);
         return { success: false, message: `Gagal mengonfirmasi pesanan: ${updateError.message}` };
     }
 
-    if (!updatedOrder) {
-        return { success: false, message: "Gagal menyimpan perubahan. Kemungkinan karena masalah perizinan pada database." };
+    if (!updatedOrder || updatedOrder.length === 0) {
+        return { success: false, message: "Gagal menyimpan perubahan. Kemungkinan karena masalah RLS (Row Level Security) pada database." };
     }
 
     try {

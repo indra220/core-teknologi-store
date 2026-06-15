@@ -8,7 +8,7 @@ import Link from '@/components/NavigationLoader';
 import { useEffect } from 'react';
 
 // Komponen untuk menampilkan satu baris informasi
-const ProfileInfoRow = ({ label, value }: { label: string; value: string | null | undefined }) => (
+const ProfileInfoRow = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div className="flex flex-col sm:flex-row py-4 border-b border-gray-200 dark:border-gray-700">
     <dt className="font-semibold text-gray-600 dark:text-gray-400 w-full sm:w-48">{label}</dt>
     <dd className="text-gray-800 dark:text-gray-100 mt-1 sm:mt-0">{value || '-'}</dd>
@@ -39,6 +39,31 @@ export default function ProfilePage() {
   }
 
   const isEmailChangePending = profile.email_status === 'PENDING_CHANGE';
+
+  // Memformat JSON Alamat agar tampil rapi di profil
+  let formattedAddress: React.ReactNode = "-";
+  if (profile.address_detail) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let addr: any = profile.address_detail;
+      if (typeof addr === 'string') {
+          try {
+              addr = JSON.parse(addr);
+          } catch (_e) {
+              // Jika gagal parse, asumsikan itu teks alamat biasa
+          }
+      }
+      
+      if (addr && typeof addr === 'object' && addr.address_line_1) {
+          formattedAddress = (
+              <>
+                {addr.address_line_1}<br/>
+                {addr.city}, {addr.province} {addr.postal_code}
+              </>
+          );
+      } else if (typeof profile.address_detail === 'string') {
+          formattedAddress = profile.address_detail;
+      }
+  }
 
   return (
     <div className="max-w-4xl mx-auto py-10 px-4">
@@ -75,7 +100,7 @@ export default function ProfilePage() {
           <ProfileInfoRow label="Nama Lengkap" value={profile.full_name} />
           <ProfileInfoRow label="Username" value={`@${profile.username}`} />
           <ProfileInfoRow label="Email" value={user.email} />
-          <ProfileInfoRow label="Detail Alamat" value={profile.address_detail} />
+          <ProfileInfoRow label="Detail Alamat" value={formattedAddress} />
         </dl>
       </div>
     </div>

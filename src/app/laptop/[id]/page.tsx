@@ -80,7 +80,10 @@ const getCachedProductById = unstable_cache(
   }
 );
 
-export default async function DetailLaptopPage({ params: { id } }: { params: { id: string } }) {
+// PERBAIKAN DI SINI: Tipe params diubah menjadi Promise, dan didestructure setelah di-await
+export default async function DetailLaptopPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  
   const supabase = await createClient();
   const { product, error } = await getCachedProductById(supabase, id);
 

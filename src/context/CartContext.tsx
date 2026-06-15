@@ -20,14 +20,16 @@ export interface CartItem {
   quantity: number;
 }
 
+// PERBAIKAN: Menambahkan `price?: number` ke dalam tipe (Product & { ... })
 type CartDataFromServer = {
   quantity: number;
-  product_variants: (ProductVariant & { products: (Product & { laptops: Laptops | Laptops[] | null }) | null }) | null;
+  product_variants: (ProductVariant & { 
+    products: (Product & { price?: number; laptops: Laptops | Laptops[] | null }) | null 
+  }) | null;
 }
 
 interface CartContextType {
   cartItems: CartItem[];
-  // Parameter dikembalikan menggunakan Product (tabel induk)
   addToCart: (product: Product, variant: ProductVariant, quantity: number) => Promise<void>;
   removeFromCart: (variantId: string) => Promise<void>;
   updateQuantity: (variantId: string, quantity: number) => Promise<void>;
@@ -54,7 +56,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const fetchCartItems = useCallback(async (userId: string) => {
     setLoading(true);
-    // Perbaikan: Lakukan JOIN ke 3 tabel untuk mengambil nama, brand, dan gambar
     const { data, error } = await supabase
       .from('cart_items')
       .select(`
@@ -86,7 +87,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
             variantId: variant.id,
             name: laptopData?.name || 'Produk Tidak Diketahui',
             brand: laptopData?.brand || 'Unknown',
-            price: variant.price,
+            // Sekarang TypeScript mengenali product.price tanpa error merah
+            price: product.price || 0, 
             imageUrl: laptopData?.image_url || null,
             processor: variant.processor,
             ram: variant.ram,
@@ -123,7 +125,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return;
     }
     
-    // Perbaikan: Ekstrak nama produk dari objek laptops
     const laptopData = Array.isArray(product.laptops) ? product.laptops[0] : product.laptops;
     showNotification(`${quantity} "${laptopData?.name || 'Produk'}" ditambahkan!`, 'success');
 

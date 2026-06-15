@@ -6,9 +6,11 @@ import { useNotification } from "@/components/notifications/NotificationProvider
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
-// Perbaikan: Menggunakan tipe Product
-import type { Product, ProductVariant } from "@/types";
+import type { Product as BaseProduct, ProductVariant } from "@/types";
 import { useCart } from "@/context/CartContext";
+
+// Penyesuaian TypeScript agar mengenali price di tabel induk
+type Product = BaseProduct & { price?: number };
 
 const simplifyProcessor = (spec: string | null): string => {
   if (!spec) return 'N/A';
@@ -87,7 +89,6 @@ function VariantOptionGroup({ title, options, getLabel, selectedValue, onSelect,
 const STATIC_RAM_OPTIONS = ['8GB DDR5', '16GB DDR5', '32GB DDR5', '8GB DDR4', '16GB DDR4'];
 const STATIC_STORAGE_OPTIONS = ['256GB NVMe SSD', '512GB NVMe SSD', '1TB NVMe SSD', '256GB SSD', '512GB SSD'];
 
-// Perbaikan: Menerima tipe Product (agar match dengan page.tsx dan CartContext)
 export default function ProductDetailClient({ product }: { product: Product }) {
   const allVariants = useMemo(() => product.product_variants || [], [product.product_variants]);
 
@@ -167,16 +168,16 @@ export default function ProductDetailClient({ product }: { product: Product }) {
       return;
     }
     if (currentVariant) {
-      // Mengirim objek product ke CartContext
       addToCart(product, currentVariant, quantity);
     } else {
         showNotification('Kombinasi varian tidak valid.', 'error');
     }
   };
 
+  // Perbaikan: Harga sekarang diambil dari product.price, bukan currentVariant.price
   const formattedPrice = new Intl.NumberFormat('id-ID', {
     style: 'currency', currency: 'IDR', minimumFractionDigits: 0
-  }).format(currentVariant?.price || 0);
+  }).format(product.price || 0);
 
   return (
     <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-8">

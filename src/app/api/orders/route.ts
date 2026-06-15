@@ -4,8 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { CartItem } from "@/context/CartContext";
 import { NextResponse } from "next/server";
 
-// --- Tipe 'VariantForValidation' yang tidak terpakai sudah dihapus ---
-
 export async function POST(request: Request) {
   const supabase = await createClient();
 
@@ -14,27 +12,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Pengguna tidak terautentikasi" }, { status: 401 });
   }
 
-  const { cartItems, payPalOrderDetails } = await request.json();
+  // 1. TANGKAP localShippingAddress DARI BODY REQUEST
+  const { cartItems, payPalOrderDetails, localShippingAddress } = await request.json();
 
   if (!cartItems || cartItems.length === 0 || !payPalOrderDetails) {
     return NextResponse.json({ error: "Data keranjang atau pembayaran tidak lengkap" }, { status: 400 });
   }
 
   try {
-    // Panggil fungsi RPC untuk membuat order, item, dan mengurangi stok secara atomik.
-    // Validasi stok sekarang terjadi di dalam fungsi RPC ini.
+    // 2. PRIORITASKAN ALAMAT LOKAL
+    // Jika user mengisi form alamat, gunakan localShippingAddress.
+    // Jika tidak ada, baru pakai alamat bawaan PayPal sebagai cadangan terakhir.
+    const addressToSave = localShippingAddress || payPalOrderDetails.purchase_units[0]?.shipping?.address;
+
     const { data: newOrderId, error: rpcError } = await supabase.rpc('create_full_order', {
       user_id_in: user.id,
       total_amount_in: cartItems.reduce((total: number, item: CartItem) => total + item.price * item.quantity, 0),
       paypal_order_id_in: payPalOrderDetails.id,
-      shipping_address_in: payPalOrderDetails.purchase_units[0]?.shipping?.address,
+      shipping_address_in: addressToSave, // <-- Masukkan ke sini!
       payer_info_in: payPalOrderDetails.payer,
       cart_items_in: cartItems,
     });
 
     if (rpcError) throw rpcError;
 
-    // Buat notifikasi untuk PEMBELI
     await supabase
       .from('notifications')
       .insert({

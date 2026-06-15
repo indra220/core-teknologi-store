@@ -2,12 +2,11 @@
 'use client';
 
 import { Order, OrderStatus } from "@/types";
-import { useEffect } from "react";
-import { useActionState } from "react";
+import { useEffect, useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { updateOrderStatus } from "../actions";
 import { useNotification } from "@/components/notifications/NotificationProvider";
-import NProgress from 'nprogress'; // <-- Impor NProgress
+import NProgress from 'nprogress';
 
 function SubmitButton({ disabled }: { disabled: boolean }) {
     const { pending } = useFormStatus();
@@ -22,16 +21,23 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
     );
 }
 
-export default function UpdateStatusForm({ order }: { order: Order }) {
+// 1. PERBAIKAN: Menambahkan props onSuccess
+export default function UpdateStatusForm({ order, onSuccess }: { order: Order, onSuccess?: () => void }) {
     const initialState = { success: false, message: "" };
     const [state, formAction] = useActionState(updateOrderStatus, initialState);
     const { showNotification } = useNotification();
 
     useEffect(() => {
         if (state.message) {
-            NProgress.done(); // <-- Hentikan TopLoader saat ada hasil
+            NProgress.done(); 
             showNotification(state.message, state.success ? 'success' : 'error');
+            
+            // 2. PERBAIKAN: Panggil onSuccess jika update berhasil untuk me-refresh parent component
+            if (state.success && onSuccess) {
+                onSuccess();
+            }
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [state, showNotification]);
 
     const statusOptions: OrderStatus[] = ['Menunggu Konfirmasi', 'Diproses', 'Dalam Pengiriman', 'Selesai', 'Dibatalkan'];

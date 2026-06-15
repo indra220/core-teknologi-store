@@ -3,17 +3,35 @@
 'use client';
 
 import { PayPalButtons, PayPalButtonsComponentProps } from "@paypal/react-paypal-js";
-import { useCart } from "@/context/CartContext";
+import { useCart, CartItem } from "@/context/CartContext";
 import { useNotification } from "@/components/notifications/NotificationProvider";
 import { useRouter } from "next/navigation";
 
-export default function PayPalPayment() {
-  const { cartItems, clearCart } = useCart();
+// 1. Definisikan tipe untuk props yang dikirim dari halaman Checkout
+interface ShippingAddress {
+  address_line_1: string;
+  admin_area_2: string;
+  admin_area_1: string;
+  postal_code: string;
+  country_code: string;
+}
+
+interface PayPalPaymentProps {
+  cartItems?: CartItem[];
+  shippingAddress?: ShippingAddress;
+}
+
+// 2. Terima props cartItems dan shippingAddress
+export default function PayPalPayment({ cartItems: propsCartItems, shippingAddress }: PayPalPaymentProps) {
+  const { cartItems: contextCartItems, clearCart } = useCart();
   const { showNotification } = useNotification();
   const router = useRouter();
 
+  // Gunakan data dari props jika ada, jika tidak fallback ke context
+  const currentCartItems = propsCartItems || contextCartItems;
+
   const createOrder: PayPalButtonsComponentProps['createOrder'] = async (_data, actions) => {
-    const subtotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
+    const subtotal = currentCartItems.reduce((total, item) => total + item.price * item.quantity, 0);
     const totalInUSD = (subtotal / 15000).toFixed(2);
 
     if (parseFloat(totalInUSD) < 0.01) {
@@ -21,17 +39,32 @@ export default function PayPalPayment() {
       throw new Error("Amount too small");
     }
 
+    // 3. Susun data transaksi
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const purchaseUnit: any = {
+      amount: {
+        value: totalInUSD,
+        currency_code: "USD",
+      },
+      description: "Pembelian produk dari Core Teknologi Store",
+    };
+
+    // 4. MEMAKSA PAYPAL MENGGUNAKAN ALAMAT LOKAL (Bukan San Jose)
+    if (shippingAddress) {
+      purchaseUnit.shipping = {
+        address: {
+          address_line_1: shippingAddress.address_line_1,
+          admin_area_2: shippingAddress.admin_area_2,
+          admin_area_1: shippingAddress.admin_area_1,
+          postal_code: shippingAddress.postal_code,
+          country_code: shippingAddress.country_code || "ID",
+        }
+      };
+    }
+
     return actions.order.create({
       intent: 'CAPTURE',
-      purchase_units: [
-        {
-          amount: {
-            value: totalInUSD,
-            currency_code: "USD",
-          },
-          description: "Pembelian produk dari Core Teknologi Store",
-        },
-      ],
+      purchase_units: [purchaseUnit],
     });
   };
 
@@ -45,13 +78,14 @@ export default function PayPalPayment() {
       const details = await actions.order.capture();
       const payerName = details.payer?.name?.given_name || 'Pelanggan';
 
-      // Panggil API untuk menyimpan pesanan di database
+      // 5. MENGIRIM ALAMAT LOKAL KE BACKEND / API
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          cartItems: cartItems,
+          cartItems: currentCartItems,
           payPalOrderDetails: details,
+          localShippingAddress: shippingAddress // <-- INI YANG PALING PENTING!
         }),
       });
 
@@ -61,9 +95,7 @@ export default function PayPalPayment() {
       
       showNotification(`Pembayaran berhasil! Terima kasih, ${payerName}.`, 'success');
       
-      await clearCart(); // Ini akan membersihkan keranjang di state & DB
-      
-      // Arahkan ke halaman pesanan baru
+      await clearCart(); 
       router.push('/orders');
 
     } catch (err) {

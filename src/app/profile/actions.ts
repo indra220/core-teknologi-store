@@ -10,13 +10,25 @@ type FormState = {
   type: 'success' | 'error' | null;
 };
 
+// Interface untuk struktur alamat agar TypeScript tahu bentuk objeknya
+interface AddressData {
+  address_line_1: string;
+  city: string;
+  province: string;
+  postal_code: string;
+}
+
 const UpdateProfileSchema = z.object({
   full_name: z.string().min(3, "Nama Lengkap minimal 3 karakter.").optional().or(z.literal('')),
   username: z.string().min(3, "Username minimal 3 karakter."),
   email: z.string().email("Format email tidak valid."),
   newPassword: z.string().min(6, "Password baru minimal 6 karakter.").optional().or(z.literal('')),
   currentPassword: z.string().min(1, "Password saat ini wajib diisi."),
-  address_detail: z.string().optional(),
+  // Menangkap input alamat terstruktur
+  address_line_1: z.string().optional(),
+  city: z.string().optional(),
+  province: z.string().optional(),
+  postal_code: z.string().optional(),
   avatar: z.instanceof(File).optional(),
 });
 
@@ -41,7 +53,10 @@ export async function updateProfile(prevState: FormState, formData: FormData): P
     email, 
     newPassword, 
     currentPassword, 
-    address_detail,
+    address_line_1,
+    city,
+    province,
+    postal_code,
     avatar,
   } = validatedFields.data;
 
@@ -54,15 +69,24 @@ export async function updateProfile(prevState: FormState, formData: FormData): P
     return { message: 'Password saat ini yang Anda masukkan salah.', type: 'error' };
   }
 
+  // Menyusun kembali JSON alamat
+  const addressJson: AddressData = {
+      address_line_1: address_line_1 || "",
+      city: city || "",
+      province: province || "",
+      postal_code: postal_code || ""
+  };
+
+  // Definisi objek update dengan tipe AddressData (Fix: mengganti 'any' dengan 'AddressData')
   const profileUpdates: {
     full_name?: string | null;
     username: string;
-    address_detail?: string | null;
+    address_detail?: AddressData; 
     avatar_url?: string;
   } = {
     full_name: full_name,
     username: username,
-    address_detail: address_detail,
+    address_detail: addressJson,
   };
 
   if (avatar && avatar.size > 0) {

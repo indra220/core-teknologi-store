@@ -2,19 +2,20 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from '@/components/NavigationLoader';
 import Image from 'next/image';
-// Perbaikan: Menggunakan tipe Product yang merupakan tabel induk
-import { Product } from "@/types";
+import { Product as BaseProduct } from "@/types";
 import { redirect } from 'next/navigation';
 import { unstable_cache } from "next/cache";
 
 export const runtime = 'edge';
+
+// Penyesuaian TypeScript agar mengenali price di tabel induk
+type Product = BaseProduct & { price?: number };
 
 type OrderItemSummary = {
   product_id: string;
   quantity: number;
 };
 
-// Fungsi cache menerima 'supabase' sebagai argumen
 const getCachedBestSellingProducts = unstable_cache(
   async (supabase, limit: number) => {
     const { data: orderItems, error: orderItemsError } = await supabase
@@ -41,8 +42,8 @@ const getCachedBestSellingProducts = unstable_cache(
     if (topProductIds.length === 0) {
       const { data: latestProducts } = await supabase
         .from('products')
-        // Perbaikan: JOIN ke tabel laptops dan product_variants
-        .select(`*, laptops(*), product_variants(price)`)
+        // PERBAIKAN: Menghapus request (price) spesifik dari product_variants
+        .select(`*, laptops(*), product_variants(*)`)
         .order('created_at', { ascending: false })
         .limit(limit);
       return (latestProducts as unknown as Product[]) || [];
@@ -50,8 +51,8 @@ const getCachedBestSellingProducts = unstable_cache(
 
     const { data: bestSellers, error: bestSellersError } = await supabase
       .from('products')
-      // Perbaikan: JOIN ke tabel laptops dan product_variants
-      .select(`*, laptops(*), product_variants(price)`)
+      // PERBAIKAN: Menghapus request (price) spesifik dari product_variants
+      .select(`*, laptops(*), product_variants(*)`)
       .in('id', topProductIds);
 
     if (bestSellersError) {
@@ -59,7 +60,6 @@ const getCachedBestSellingProducts = unstable_cache(
       return [];
     }
     
-    // Perbaikan: Urutkan data berdasarkan Product
     return (bestSellers as unknown as Product[]).sort((a: Product, b: Product) => productSales[b.id] - productSales[a.id]);
   },
   ['best-selling-products'], 
@@ -111,12 +111,10 @@ export default async function HomePage() {
         {products.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {products.map((product: Product) => {
-              // Perbaikan: Ekstrak informasi dari tabel laptops karena ini adalah data relasi
               const laptopData = Array.isArray(product.laptops) ? product.laptops[0] : product.laptops;
 
-              const displayPrice = product.product_variants && product.product_variants.length > 0
-                ? Math.min(...product.product_variants.map(v => v.price))
-                : 0;
+              // PERBAIKAN: Mengambil harga langsung dari tabel master (product.price)
+              const displayPrice = product.price || 0;
 
               return (
                 <div key={product.id} className="group bg-white dark:bg-gray-800 rounded-2xl shadow-lg dark:shadow-2xl dark:shadow-gray-950 overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 border border-gray-100 dark:border-gray-700 flex flex-col">

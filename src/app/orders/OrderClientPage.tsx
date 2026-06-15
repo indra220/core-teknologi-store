@@ -2,15 +2,14 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Order, OrderStatus } from "@/types";
+// PERBAIKAN: Mengimpor tipe Product dan Laptops
+import { Order, OrderStatus, Product, Laptops } from "@/types";
 import Link from "next/link";
 import Image from "next/image";
 import CancelOrderButton from "./CancelOrderButton";
 import ConfirmDeliveryButton from "./ConfirmDeliveryButton";
 import { motion, AnimatePresence } from 'framer-motion';
 
-// --- Ikon-Ikon ---
-// PERBAIKAN: Hapus TruckIcon dan CheckCircleIcon yang tidak digunakan
 import { TagIcon, CalendarDaysIcon, XCircleIcon, CreditCardIcon, WalletIcon } from '@heroicons/react/24/outline';
 
 const formatDate = (dateString: string) => {
@@ -19,7 +18,6 @@ const formatDate = (dateString: string) => {
   });
 };
 
-// --- Komponen Status Badge ---
 const StatusBadge = ({ status }: { status: OrderStatus }) => {
   const statusStyles: Record<OrderStatus, string> = {
     'Menunggu Konfirmasi': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300',
@@ -35,7 +33,6 @@ const StatusBadge = ({ status }: { status: OrderStatus }) => {
   );
 };
 
-// --- Komponen Progress Bar Visual ---
 const OrderProgressBar = ({ status }: { status: OrderStatus }) => {
   const steps: OrderStatus[] = ['Menunggu Konfirmasi', 'Diproses', 'Dalam Pengiriman', 'Selesai'];
   const currentStepIndex = steps.indexOf(status);
@@ -52,7 +49,6 @@ const OrderProgressBar = ({ status }: { status: OrderStatus }) => {
   return (
     <div className="w-full">
       <div className="flex justify-between mb-1">
-        {/* PERBAIKAN: Hapus parameter 'index' yang tidak digunakan */}
         {steps.map((step) => (
           <div key={step} className="text-center text-xs text-gray-500 dark:text-gray-400" style={{ width: '25%' }}>
             {step}
@@ -69,17 +65,14 @@ const OrderProgressBar = ({ status }: { status: OrderStatus }) => {
   );
 };
 
-
 export default function OrderClientPage({ allOrders }: { allOrders: Order[] }) {
   const [activeTab, setActiveTab] = useState<OrderStatus | 'Semua'>('Semua');
 
-  // PERBAIKAN: Sederhanakan logika filter untuk memperbaiki error TypeScript
   const filteredOrders = useMemo(() => {
     if (activeTab === 'Semua') return allOrders;
     return allOrders.filter(o => o.status === activeTab);
   }, [allOrders, activeTab]);
 
-  // PERBAIKAN: Tambahkan 'Menunggu Konfirmasi' ke dalam daftar tab
   const tabs: (OrderStatus | 'Semua')[] = ['Semua', 'Menunggu Konfirmasi', 'Diproses', 'Dalam Pengiriman', 'Selesai', 'Dibatalkan'];
   
   const tabLabels: Record<OrderStatus | 'Semua', string> = {
@@ -124,7 +117,6 @@ export default function OrderClientPage({ allOrders }: { allOrders: Order[] }) {
                 transition={{ duration: 0.3 }}
                 className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700"
               >
-                {/* Header Kartu Pesanan */}
                 <div className="flex flex-col sm:flex-row justify-between items-start gap-4 border-b border-gray-200 dark:border-gray-600 pb-4 mb-4">
                   <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">ID Pesanan</p>
@@ -144,25 +136,32 @@ export default function OrderClientPage({ allOrders }: { allOrders: Order[] }) {
                   </div>
                 </div>
 
-                {/* Progress Bar */}
                 <div className="my-6">
                    <OrderProgressBar status={order.status} />
                 </div>
 
-                {/* Daftar Item */}
                 <div className="space-y-4">
-                  {order.order_items.map(item => (
-                      <div key={item.id} className="flex items-center gap-4">
-                          <Image src={item.products?.image_url || '/placeholder.png'} alt={item.product_name} width={64} height={64} className="h-16 w-16 rounded-lg object-cover border dark:border-gray-600"/>
-                          <div className="flex-grow">
-                              <p className="font-semibold text-gray-800 dark:text-gray-100">{item.product_name}</p>
-                              <p className="text-sm text-gray-500 dark:text-gray-400">{item.quantity} x {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.price)}</p>
+                  {order.order_items.map(item => {
+                      // PERBAIKAN: Menghapus tipe 'any' dan menggantinya dengan tipe relasi yang spesifik
+                      const productsData = item.products as (Product & { laptops: Laptops | Laptops[] | null }) | null;
+                      
+                      const laptopData = productsData?.laptops 
+                          ? (Array.isArray(productsData.laptops) ? productsData.laptops[0] : productsData.laptops) 
+                          : null;
+                      const imageUrl = laptopData?.image_url || '/placeholder.png';
+
+                      return (
+                          <div key={item.id} className="flex items-center gap-4">
+                              <Image src={imageUrl} alt={item.product_name || 'Produk'} width={64} height={64} className="h-16 w-16 rounded-lg object-cover border dark:border-gray-600"/>
+                              <div className="flex-grow">
+                                  <p className="font-semibold text-gray-800 dark:text-gray-100">{item.product_name}</p>
+                                  <p className="text-sm text-gray-500 dark:text-gray-400">{item.quantity} x {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.price)}</p>
+                              </div>
                           </div>
-                      </div>
-                  ))}
+                      );
+                  })}
                 </div>
 
-                {/* Footer Kartu Pesanan */}
                 <div className="flex flex-col sm:flex-row justify-between items-end gap-4 border-t border-gray-200 dark:border-gray-600 mt-6 pt-4">
                    <div className="w-full sm:w-auto text-sm text-gray-600 dark:text-gray-300">
                         <div className="flex items-center gap-2 font-semibold">
@@ -191,7 +190,6 @@ export default function OrderClientPage({ allOrders }: { allOrders: Order[] }) {
           ) : (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20 bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700">
                 <h2 className="text-2xl font-semibold text-gray-700 dark:text-gray-200">Tidak Ada Pesanan</h2>
-                {/* PERBAIKAN: Ganti "" dengan <strong> untuk memperbaiki error unescaped entities */}
                 <p className="mt-2 text-gray-500 dark:text-gray-400">Anda tidak memiliki pesanan dengan status <strong className="font-semibold text-gray-600 dark:text-gray-300">{tabLabels[activeTab]}</strong>.</p>
                 <Link href="/products" className="mt-6 inline-block bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-blue-700">
                     Mulai Belanja

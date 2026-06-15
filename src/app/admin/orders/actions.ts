@@ -10,7 +10,6 @@ type ActionResult = {
   message: string;
 };
 
-// --- 1. TAMBAHKAN 'prevState' SEBAGAI PARAMETER PERTAMA ---
 export async function updateOrderStatus(prevState: ActionResult, formData: FormData): Promise<ActionResult> {
   const orderId = formData.get('orderId') as string;
   const newStatus = formData.get('status') as OrderStatus;
@@ -31,20 +30,54 @@ export async function updateOrderStatus(prevState: ActionResult, formData: FormD
     return { success: false, message: "Anda tidak memiliki izin untuk melakukan aksi ini." };
   }
 
-  const { error } = await supabase
+  // 1. CEK STATUS SAAT INI (Backend Validation)
+  const { data: currentOrder, error: fetchError } = await supabase
     .from('orders')
-    .update({ status: newStatus })
-    .eq('id', orderId);
+    .select('status')
+    .eq('id', orderId)
+    .single();
 
-  if (error) {
-    return { success: false, message: `Gagal memperbarui status: ${error.message}` };
+  if (fetchError || !currentOrder) {
+    return { success: false, message: "Pesanan tidak ditemukan." };
   }
 
+  // VALIDASI: Cegah pembatalan jika status sudah "Dalam Pengiriman" atau "Selesai"
+  if ((currentOrder.status === 'Dalam Pengiriman' || currentOrder.status === 'Selesai') && newStatus === 'Dibatalkan') {
+    return { success: false, message: "Pesanan yang sudah dalam pengiriman (atau selesai) tidak dapat dibatalkan!" };
+  }
+
+  // 2. PROSES UPDATE ATAU PEMBATALAN (Dengan Refund)
+  if (newStatus === 'Dibatalkan' && currentOrder.status !== 'Dibatalkan') {
+      // Jika Admin membatalkan, panggil RPC agar uang kembali ke dompet user
+      const { error: rpcError } = await supabase.rpc('cancel_order_and_refund_to_wallet', {
+          order_id_to_cancel: orderId,
+          new_status: 'Dibatalkan'
+      });
+
+      if (rpcError) {
+          console.error('RPC Error pembatalan oleh admin:', rpcError);
+          return { success: false, message: "Gagal membatalkan pesanan. Terjadi kesalahan pada sistem pengembalian dana." };
+      }
+  } else {
+      // Proses Update Status Biasa
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: newStatus })
+        .eq('id', orderId);
+
+      if (error) {
+        return { success: false, message: `Gagal memperbarui status: ${error.message}` };
+      }
+  }
+
+  // 3. KIRIM NOTIFIKASI KE USER
   let notificationMessage = '';
   if (newStatus === 'Diproses') {
     notificationMessage = `Pesanan Anda #${orderId.substring(0, 8)} sedang kami proses.`;
   } else if (newStatus === 'Dalam Pengiriman') {
-    notificationMessage = `Pesanan Anda #${orderId.substring(0, 8)} telah dikirim! Mohon konfirmasi jika sudah diterima.`;
+    notificationMessage = `Pesanan Anda #${orderId.substring(0, 8)} telah dikirim! Mohon konfirmasi jika pesanan sudah diterima.`;
+  } else if (newStatus === 'Dibatalkan') {
+    notificationMessage = `Pesanan Anda #${orderId.substring(0, 8)} telah dibatalkan oleh Admin. Dana telah dikembalikan ke saldo Anda (jika menggunakan dompet).`;
   }
 
   if (notificationMessage && userId) {
