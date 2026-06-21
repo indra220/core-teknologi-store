@@ -14,12 +14,16 @@ export default function TopLoader() {
     NProgress.done();
   }, [pathname, searchParams]);
 
-  // Efek untuk konfigurasi awal NProgress (hanya berjalan sekali)
+  // Efek untuk konfigurasi awal NProgress (hanya berjalan sekali saat mount)
   useEffect(() => {
     NProgress.configure({ 
-      showSpinner: false,
+      showSpinner: false, // Disembunyikan agar lebih bersih (minimalis)
+      trickleSpeed: 200,  // Kecepatan animasi loading mengalir
+      minimum: 0.1,       // Persentase awal saat mulai
+      easing: 'ease-out',
+      speed: 400
     });
   }, []);
 
-  return null; // Komponen ini tidak merender UI apapun.
+  return null; // Komponen ini hanya menangani logika, tidak merender UI apapun
 }

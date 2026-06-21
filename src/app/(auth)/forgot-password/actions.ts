@@ -1,4 +1,4 @@
-// src/app/forgot-password/actions.ts
+// src/app/(auth)/forgot-password/actions.ts
 'use server';
 
 import { createClient } from "@/lib/supabase/server";
@@ -16,8 +16,6 @@ export async function requestPasswordReset(prevState: FormState, formData: FormD
 
   const validation = EmailSchema.safeParse(email);
   if (!validation.success) {
-    // --- PERBAIKAN DI SINI ---
-    // Akses pesan error melalui validation.error.issues
     return { message: validation.error.issues[0].message, type: 'error' };
   }
 
@@ -28,14 +26,8 @@ export async function requestPasswordReset(prevState: FormState, formData: FormD
 
   if (error) {
     console.error("Password Reset Error:", error.message);
-    return { 
-      message: "Jika email Anda terdaftar, Anda akan menerima link untuk reset password.",
-      type: 'success'
-    };
+    return { message: "Jika email Anda terdaftar, Anda akan menerima link untuk reset password.", type: 'success' };
   }
 
-  return {
-    message: "Jika email Anda terdaftar, Anda akan menerima link untuk reset password.",
-    type: 'success'
-  };
+  return { message: "Jika email Anda terdaftar, Anda akan menerima link untuk reset password.", type: 'success' };
 }

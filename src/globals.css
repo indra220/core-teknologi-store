@@ -6,42 +6,53 @@
 @tailwind utilities;
 
 /* ==========================================================================
-  TEMA LIGHT MODE (DEFAULT)
+  TEMA DASAR & TIPOGRAFI
   ========================================================================== */
 @layer base {
   body {
-    @apply font-sans;
+    @apply font-sans bg-slate-50 text-slate-800;
+    
+    /* Enterprise Text Rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    
+    position: relative;
+    min-height: 100vh;
+    overflow-x: hidden;
+    transition: background-color 0.3s ease;
   }
+  
   h1, h2, h3, h4, h5, h6 {
-    @apply font-heading;
+    @apply font-heading tracking-tight;
+  }
+
+  /* Warna Sorotan Teks (Selection) Kustom */
+  ::selection {
+    @apply bg-indigo-500/30 text-indigo-900 dark:bg-indigo-500/40 dark:text-indigo-100;
   }
 }
 
+/* ==========================================================================
+  LATAR BELAKANG GEOMETRIS & NOISE (LIGHT MODE)
+  ========================================================================== */
 :root {
-  --background-image-light: url('data:image/svg+xml;utf8,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><pattern id="dot-pattern" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="%23D1D5DB" opacity="0.4"/></pattern><rect x="0" y="0" width="100%" height="100%" fill="url(%23dot-pattern)" /></svg>');
+  /* Menggunakan warna Slate untuk titik agar tidak terlalu kontras */
+  --background-image-light: url('data:image/svg+xml;utf8,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><pattern id="dot-pattern" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1.2" fill="%2394A3B8" opacity="0.25"/></pattern><rect x="0" y="0" width="100%" height="100%" fill="url(%23dot-pattern)" /></svg>');
   --noise-opacity-light: 0.02;
-}
-
-body {
-  @apply bg-slate-50 text-slate-800;
-  position: relative;
-  min-height: 100vh;
-  overflow-x: hidden;
-  transition: background-color 0.3s ease;
 }
 
 body::after {
   content: '';
-  position: absolute;
+  position: fixed; /* Menggunakan fixed agar pattern tidak ikut tergulir (scroll) */
   top: 0; left: 0; right: 0; bottom: 0;
   background-image: var(--background-image-light);
-  background-attachment: fixed;
   z-index: -2;
+  pointer-events: none;
 }
 
 body::before {
   content: '';
-  position: absolute;
+  position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAMAAAAp4XiDAAAAUVBMVEWFhYWFhYSEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISG/v7+qampAAAAAAAAAAAAAAAAAAAAAAAAAAAAGRmbxAAAAG3RSTlMAAAAAAQIDBAUGBwgJCgsMDQ4PEBESFBUWFxgZGhscHR4fICEiIyQlJicpKSwtLi8wMTIzNDU2Nzg5Ojs7Pj5AQEFERUZHSElKAAAAAAAAAAAAAAAAAAAAAAAAAAAAlh0sRQAAAEFJREFUeNpjYBgFo2AUjIJRMApGCAcAAAE4AAGqQZ3DAAAAAElFTSuQmCC');
   opacity: var(--noise-opacity-light);
@@ -54,14 +65,19 @@ body::before {
   ========================================================================== */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background-image-dark: url('data:image/svg+xml;utf8,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><pattern id="dot-pattern" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="white" opacity="0.1"/></pattern><rect x="0" y="0" width="100%" height="100%" fill="url(%23dot-pattern)" /></svg>');
+    /* Menyesuaikan titik di mode gelap */
+    --background-image-dark: url('data:image/svg+xml;utf8,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><pattern id="dot-pattern" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1.2" fill="%23475569" opacity="0.3"/></pattern><rect x="0" y="0" width="100%" height="100%" fill="url(%23dot-pattern)" /></svg>');
     --noise-opacity-dark: 0.03;
   }
 
   body {
-    @apply bg-gray-900 text-gray-200;
-    background-image: radial-gradient(circle at top right, rgba(124, 58, 237, 0.15), transparent 40%),
-                      radial-gradient(circle at bottom left, rgba(59, 130, 246, 0.15), transparent 50%);
+    /* Menggunakan palet Slate gelap yang lebih eksklusif dibanding Gray standar */
+    @apply bg-[#0B1120] text-slate-200;
+    
+    /* Gradien radial dengan aksen warna merek (Indigo & Cyan) */
+    background-image: radial-gradient(circle at top right, rgba(79, 70, 229, 0.12), transparent 40%),
+                      radial-gradient(circle at bottom left, rgba(6, 182, 212, 0.08), transparent 50%);
+    background-attachment: fixed;
   }
 
   body::after {
@@ -73,16 +89,50 @@ body::before {
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply text-gray-50;
+    @apply text-white;
   }
 }
 
-/* ... sisa kode @keyframes tidak berubah ... */
+/* ==========================================================================
+  KUSTOMISASI SCROLLBAR (ENTERPRISE)
+  ========================================================================== */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 dark:bg-slate-700 border-2 border-solid border-transparent bg-clip-padding rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-400 dark:bg-slate-600;
+}
+
+/* Scrollbar khusus untuk Sidebar / area kecil agar lebih minimalis */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-slate-200 dark:bg-slate-700 border-none rounded-full;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-300 dark:bg-slate-600;
+}
+
+/* ==========================================================================
+  ANIMASI KUSTOM
+  ========================================================================== */
 @keyframes fade-in-down {
-  from { opacity: 0; transform: translateY(-20px); }
+  from { opacity: 0; transform: translateY(-15px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in-down {
-  animation: fade-in-down 0.5s ease-out forwards;
+  /* Transisi diatur menggunakan kurva bezier agar lebih natural */
+  animation: fade-in-down 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

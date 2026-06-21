@@ -41,8 +41,5 @@ export async function updatePassword(prevState: FormState, formData: FormData): 
   }
 
   await supabase.auth.signOut();
-
-  // --- PERBAIKAN DI SINI ---
-  // Tambahkan parameter 'action=clearsession' untuk memberi sinyal ke halaman login
   redirect('/login?message=reset_success&action=clearsession');
 }

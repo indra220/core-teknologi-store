@@ -9,16 +9,22 @@ import PayPalPayment from "@/components/PayPalButtons";
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Profile } from "@/types";
-import { createOrderFromWallet, ShippingAddress } from "./actions";
 import { useNotification } from "@/components/notifications/NotificationProvider";
 import ConfirmationModal from "@/components/ConfirmationModal";
 import { useRouter } from "next/navigation";
 import NProgress from 'nprogress'; 
 
-const WalletIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25-2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9M3 12V9m18 3a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18 3V9a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18-3h-2.25a2.25 2.25 0 0 0-2.25 2.25V9M3 9V6.75A2.25 2.25 0 0 1 5.25 4.5h13.5A2.25 2.25 0 0 1 21 6.75V9" /></svg>;
-const ConfirmationIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-green-600 dark:text-green-400"><path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25-2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9M3 12V9m18 3a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18 3V9a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18-3h-2.25a2.25 2.25 0 0 0-2.25 2.25V9M3 9V6.75A2.25 2.25 0 0 1 5.25 4.5h13.5A2.25 2.25 0 0 1 21 6.75V9" /></svg>;
-const MapPinIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-blue-600 dark:text-blue-400"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>;
-const PencilIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" /></svg>;
+import { 
+  MapPinIcon, 
+  PencilSquareIcon, 
+  WalletIcon, 
+  CheckCircleIcon,
+  ShoppingBagIcon,
+  TrashIcon,
+  PlusIcon,
+  MinusIcon,
+  ExclamationCircleIcon
+} from '@heroicons/react/24/outline';
 
 export default function CheckoutPage() {
   const { cartItems, cartCount, updateQuantity, removeFromCart, clearClientCart } = useCart();
@@ -35,7 +41,6 @@ export default function CheckoutPage() {
   const [province, setProvince] = useState("");
   const [postalCode, setPostalCode] = useState("");
   
-  // State untuk mengontrol visibilitas form vs kartu alamat
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
 
@@ -144,8 +149,7 @@ export default function CheckoutPage() {
       setIsEditingAddress(false);
   };
 
-  // OBJEK ALAMAT: Disusun untuk dikirim ke PayPal dan Wallet Payment
-  const currentShippingAddress: ShippingAddress = {
+  const currentShippingAddress = {
       address_line_1: addressLine1,
       admin_area_2: city, 
       admin_area_1: province, 
@@ -165,30 +169,51 @@ export default function CheckoutPage() {
     setIsModalOpen(true);
   };
 
+  // PERBAIKAN: Menghubungkan Wallet dengan API /orders secara seragam
   const handleConfirmPayment = async () => {
     setIsProcessing(true);
     NProgress.start(); 
 
-    const result = await createOrderFromWallet(cartItems, currentShippingAddress);
-    
-    if (result.success) {
-      showNotification(result.message, 'success');
-      clearClientCart();
-      router.push('/orders?status=success');
-    } else {
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cartItems: cartItems,
+          localShippingAddress: currentShippingAddress,
+          paymentMethod: 'wallet' // <-- Kunci pembeda untuk diproses sebagai Wallet
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        clearClientCart();
+        router.push('/orders?message=order_success');
+      } else {
+        throw new Error(result.error || "Gagal memproses pesanan.");
+      }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
       setIsProcessing(false);
       setIsModalOpen(false);
-      showNotification(result.message, 'error');
+      showNotification(error.message, 'error');
       NProgress.done(); 
     }
   };
 
   if (cartCount === 0) {
     return (
-      <div className="text-center py-20">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Keranjang Anda Kosong</h1>
-        <p className="mt-4 text-gray-600 dark:text-gray-400">Sepertinya Anda belum menambahkan produk apa pun.</p>
-        <Link href="/products" className="mt-6 inline-block bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-blue-700">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center animate-in fade-in zoom-in-95 duration-500">
+        <div className="h-24 w-24 bg-slate-50 dark:bg-slate-800/50 rounded-full flex items-center justify-center mb-6 border border-slate-100 dark:border-slate-700 shadow-sm">
+            <ShoppingBagIcon className="h-10 w-10 text-slate-400" />
+        </div>
+        <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Keranjang Anda Kosong</h1>
+        <p className="mt-3 text-slate-500 dark:text-slate-400 max-w-sm">Sepertinya Anda belum menemukan produk yang tepat. Mari jelajahi koleksi kami.</p>
+        <Link 
+            href="/products" 
+            className="mt-8 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold px-8 py-3.5 rounded-xl hover:bg-indigo-600 dark:hover:bg-indigo-500 hover:text-white transition-all shadow-md active:scale-95"
+        >
           Mulai Belanja
         </Link>
       </div>
@@ -204,220 +229,274 @@ export default function CheckoutPage() {
         title="Konfirmasi Pembayaran"
         isProcessing={isProcessing}
         confirmText="Ya, Bayar Sekarang"
-        icon={<ConfirmationIcon />}
+        icon={<CheckCircleIcon className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />}
       >
-        <p>
+        <p className="text-slate-600 dark:text-slate-300">
           Anda akan membayar sebesar{" "}
-          <span className="font-bold text-gray-800 dark:text-gray-100">
+          <span className="font-bold text-slate-900 dark:text-white">
             {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(subtotal)}
           </span>{" "}
-          menggunakan saldo dompet Anda. Lanjutkan?
+          menggunakan saldo dompet Anda. Lanjutkan proses?
         </p>
       </ConfirmationModal>
 
-      <div className="max-w-6xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-        <header className="mb-10 text-center">
-          <h1 className="text-4xl font-extrabold text-gray-900 dark:text-gray-50 tracking-tight">Detail Keranjang</h1>
-          <p className="mt-2 text-lg text-gray-600 dark:text-gray-300">Periksa kembali pesanan Anda sebelum melanjutkan.</p>
+      <div className="max-w-6xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <header className="mb-8">
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">Penyelesaian Pesanan</h1>
+          <p className="mt-2 text-sm sm:text-base text-slate-500 dark:text-slate-400">Verifikasi alamat pengiriman dan produk Anda sebelum melakukan pembayaran.</p>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          <div className="lg:col-span-2 space-y-8">
-            <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 transition-all duration-300">
+          <div className="lg:col-span-2 space-y-6">
+            
+            {/* Kartu Alamat Pengiriman */}
+            <div className="bg-white dark:bg-[#111827] p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800 transition-all">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
-                  <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                    <MapPinIcon />
-                    Alamat Pengiriman
+                  <h2 className="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                    <MapPinIcon className="h-6 w-6 text-indigo-500" />
+                    Destinasi Pengiriman
                   </h2>
                   
                   {!isEditingAddress && (
                      <button 
                         onClick={() => setIsEditingAddress(true)}
-                        className="flex items-center gap-2 text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors bg-blue-50 dark:bg-blue-900/30 px-4 py-2 rounded-lg"
+                        className="flex items-center gap-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-all bg-indigo-50 dark:bg-indigo-500/10 px-4 py-2 rounded-xl active:scale-95"
                      >
-                        <PencilIcon />
+                        <PencilSquareIcon className="h-4 w-4" />
                         Ubah Alamat
                      </button>
                   )}
               </div>
 
               {isEditingAddress ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-fadeIn">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in zoom-in-95 duration-300">
                      <div className="md:col-span-2">
-                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                          Alamat Lengkap <span className="text-red-500">*</span>
+                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                          Alamat Lengkap <span className="text-rose-500">*</span>
                         </label>
                         <textarea 
                           required 
                           rows={3} 
                           value={addressLine1} 
                           onChange={e => setAddressLine1(e.target.value)} 
-                          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-shadow" 
-                          placeholder="Contoh: Jl. Merdeka No. 123, RT 01/RW 02, Kec. Tawang"
+                          className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-white text-sm outline-none transition-all placeholder:text-slate-400 resize-none" 
+                          placeholder="Cth: Jl. Merdeka No. 123, RT 01/RW 02, Kec. Tawang"
                         />
                      </div>
                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                          Kota / Kabupaten <span className="text-red-500">*</span>
+                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                          Kota / Kabupaten <span className="text-rose-500">*</span>
                         </label>
                         <input 
                           type="text" 
                           required 
                           value={city} 
                           onChange={e => setCity(e.target.value)} 
-                          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-shadow" 
-                          placeholder="Contoh: Tasikmalaya" 
+                          className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-white text-sm outline-none transition-all placeholder:text-slate-400" 
+                          placeholder="Cth: Tasikmalaya" 
                         />
                      </div>
                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                          Provinsi <span className="text-red-500">*</span>
+                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                          Provinsi <span className="text-rose-500">*</span>
                         </label>
                         <input 
                           type="text" 
                           required 
                           value={province} 
                           onChange={e => setProvince(e.target.value)} 
-                          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-shadow" 
-                          placeholder="Contoh: Jawa Barat" 
+                          className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-white text-sm outline-none transition-all placeholder:text-slate-400" 
+                          placeholder="Cth: Jawa Barat" 
                         />
                      </div>
                      <div className="md:col-span-2">
-                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                          Kode Pos <span className="text-red-500">*</span>
+                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                          Kode Pos <span className="text-rose-500">*</span>
                         </label>
                         <input 
                           type="text" 
                           required 
                           value={postalCode} 
                           onChange={e => setPostalCode(e.target.value)} 
-                          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-shadow" 
-                          placeholder="Contoh: 46115" 
+                          className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-white text-sm outline-none transition-all placeholder:text-slate-400" 
+                          placeholder="Cth: 46115" 
                         />
                      </div>
-                     <div className="md:col-span-2 flex justify-end gap-3 mt-4">
+                     <div className="md:col-span-2 flex justify-end gap-3 mt-2">
                          <button 
                             type="button"
                             onClick={handleCancelAddress}
                             disabled={isSavingAddress}
-                            className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-6 py-2.5 rounded-lg font-bold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-sm disabled:bg-gray-400 disabled:opacity-50"
+                            className="px-6 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
                          >
                             Batal
                          </button>
                          <button 
                             onClick={handleSaveAddress}
                             disabled={isSavingAddress}
-                            className="bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 px-6 py-2.5 rounded-lg font-bold hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors shadow-md disabled:bg-gray-400"
+                            className="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-500 transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center gap-2"
                          >
-                            {isSavingAddress ? 'Menyimpan...' : 'Simpan Alamat'}
+                            {isSavingAddress ? (
+                              <><span className="animate-pulse">Menyimpan...</span></>
+                            ) : 'Simpan Alamat'}
                          </button>
                      </div>
                   </div>
               ) : (
-                  <div className="bg-gray-50 dark:bg-gray-900/50 p-6 rounded-xl border border-gray-200 dark:border-gray-700 animate-fadeIn">
-                      <p className="text-lg font-bold text-gray-900 dark:text-gray-50 mb-2 uppercase tracking-wide">
+                  <div className="bg-slate-50/50 dark:bg-slate-800/20 p-5 rounded-xl border border-slate-100 dark:border-slate-800 animate-in fade-in">
+                      <p className="text-sm font-bold text-slate-900 dark:text-white mb-2 uppercase tracking-wide flex items-center gap-2">
                           {profile?.full_name || profile?.username || 'Pelanggan'}
+                          <span className="bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400 text-[10px] px-2 py-0.5 rounded-md">Utama</span>
                       </p>
-                      <p className="text-gray-600 dark:text-gray-300 leading-relaxed font-medium">
+                      <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                           {addressLine1}<br/>
-                          {city}, {province} {postalCode}<br/>
+                          {city}, {province} <span className="font-mono text-xs">{postalCode}</span><br/>
                           Indonesia
                       </p>
                   </div>
               )}
             </div>
 
-            <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">Produk Pesanan ({cartCount})</h2>
-              <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                {cartItems.map((item: CartItem) => (
-                  <li key={item.variantId} className="flex items-center py-6">
-                    <Image src={item.imageUrl || '/placeholder.png'} alt={item.name} width={96} height={96} className="h-24 w-24 rounded-lg object-cover border dark:border-gray-700"/>
-                    <div className="ml-4 flex-grow">
-                      <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-50">{item.name}</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.price)}</p>
-                      <button onClick={() => removeFromCart(item.variantId)} className="mt-2 text-xs text-red-500 hover:text-red-700">Hapus</button>
-                    </div>
-                    <div className="flex items-center border border-gray-300 dark:border-gray-600 rounded-lg">
-                      <button onClick={() => updateQuantity(item.variantId, item.quantity - 1)} className="px-3 py-1 font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-l-lg">-</button>
-                      <span className="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">{item.quantity}</span>
-                      <button onClick={() => updateQuantity(item.variantId, item.quantity + 1)} className="px-3 py-1 font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-r-lg">+</button>
-                    </div>
-                  </li>
-                ))}
+            {/* Kartu Daftar Produk */}
+            <div className="bg-white dark:bg-[#111827] rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800 overflow-hidden">
+              <div className="p-6 sm:p-8 border-b border-slate-100 dark:border-slate-800">
+                <h2 className="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  <ShoppingBagIcon className="h-6 w-6 text-indigo-500" />
+                  Rincian Item ({cartCount})
+                </h2>
+              </div>
+              <ul className="divide-y divide-slate-100 dark:divide-slate-800/60 p-2 sm:p-4">
+                {cartItems.map((item: CartItem) => {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const itemVariant = (item as any).variantName || (item as any).variant || (item as any).varian || (item as any).product_variant;
+                  
+                  return (
+                    <li key={item.variantId} className="flex flex-col sm:flex-row sm:items-center p-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 rounded-xl transition-colors gap-4">
+                      <div className="h-20 w-20 shrink-0 relative rounded-xl border border-slate-200/70 dark:border-slate-700 overflow-hidden bg-slate-50 dark:bg-slate-800 shadow-sm">
+                          <Image src={item.imageUrl || '/placeholder.png'} alt={item.name} fill sizes="80px" className="object-cover"/>
+                      </div>
+                      
+                      <div className="flex-grow">
+                        <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white line-clamp-2">{item.name}</h3>
+                        {itemVariant && (
+                            <p className="text-xs text-slate-500 mt-1">Varian: <span className="font-medium text-slate-700 dark:text-slate-300">{itemVariant}</span></p>
+                        )}
+                        <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400 mt-2">
+                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(item.price)}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-between sm:justify-end gap-6 sm:w-auto w-full mt-2 sm:mt-0">
+                        <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-800 shadow-sm">
+                          <button onClick={() => updateQuantity(item.variantId, item.quantity - 1)} className="px-3 py-1.5 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors active:bg-slate-100">
+                            <MinusIcon className="h-3.5 w-3.5 stroke-2" />
+                          </button>
+                          <span className="px-3 text-xs font-bold text-slate-900 dark:text-white w-8 text-center">{item.quantity}</span>
+                          <button onClick={() => updateQuantity(item.variantId, item.quantity + 1)} className="px-3 py-1.5 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors active:bg-slate-100">
+                            <PlusIcon className="h-3.5 w-3.5 stroke-2" />
+                          </button>
+                        </div>
+                        <button onClick={() => removeFromCart(item.variantId)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors" title="Hapus Item">
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
             
           </div>
           
+          {/* Kolom Kanan: Ringkasan Pesanan */}
           <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 sticky top-24">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">Ringkasan Pesanan</h2>
-              <div className="space-y-4">
-                <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                  <span>Subtotal</span>
-                  <span>{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(subtotal)}</span>
+            <div className="bg-white dark:bg-[#111827] p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800 sticky top-24">
+              <h2 className="text-xl font-extrabold text-slate-900 dark:text-white mb-6">Ringkasan</h2>
+              
+              <div className="space-y-4 text-sm">
+                <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                  <span>Subtotal ({cartCount} item)</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(subtotal)}</span>
                 </div>
-                <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                  <span>Ongkos Kirim</span>
-                  <span>Gratis</span>
+                <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                  <span>Estimasi Ongkos Kirim</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">Gratis</span>
                 </div>
-                <div className="flex justify-between text-xl font-bold text-gray-900 dark:text-gray-50 border-t dark:border-gray-600 pt-4 mt-4">
-                  <span>Total</span>
-                  <span>{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(subtotal)}</span>
+                
+                <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-base font-bold text-slate-900 dark:text-white">Total Akhir</span>
+                    <span className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 tracking-tight">
+                        {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(subtotal)}
+                    </span>
+                  </div>
                 </div>
               </div>
 
               {(!isAddressValid || isEditingAddress) ? (
-                  <div className="mt-8 border-t dark:border-gray-600 pt-6">
-                      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-xl text-center">
-                          <p className="text-red-600 dark:text-red-400 font-medium text-sm">
+                  <div className="mt-8">
+                      <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-4 rounded-xl flex gap-3 items-start">
+                          <ExclamationCircleIcon className="h-5 w-5 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
+                          <p className="text-amber-800 dark:text-amber-400 font-medium text-xs leading-relaxed">
                               {isEditingAddress 
-                                ? "Silakan simpan Alamat Pengiriman Anda terlebih dahulu untuk melanjutkan pembayaran." 
-                                : "Silakan lengkapi form Alamat Pengiriman di samping terlebih dahulu untuk membuka opsi pembayaran."}
+                                ? "Silakan simpan Alamat Pengiriman Anda terlebih dahulu untuk membuka opsi pembayaran." 
+                                : "Lengkapi form Alamat Pengiriman Anda terlebih dahulu sebelum membayar."}
                           </p>
                       </div>
                   </div>
               ) : (
-                  <>
+                  <div className="mt-8 space-y-5 animate-in fade-in">
                     {profile && profile.role !== 'admin' && (
-                        <div className="mt-8 border-t dark:border-gray-600 pt-6">
-                            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Metode Pembayaran</h3>
-                            <div className="p-4 rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50">
-                                <div className="flex justify-between items-center">
-                                    <div>
-                                        <p className="font-semibold text-gray-800 dark:text-gray-100">Saldo Dompet</p>
-                                        <p className="text-sm font-bold text-green-600 dark:text-green-400">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(walletBalance)}</p>
+                        <>
+                            <div>
+                                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">Pilih Metode Pembayaran</p>
+                                
+                                <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-colors">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-sm">
+                                            <WalletIcon className="h-5 w-5 text-indigo-500" />
+                                            Core Wallet
+                                        </div>
+                                        <p className="text-sm font-bold text-slate-900 dark:text-white">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(walletBalance)}</p>
                                     </div>
+                                    
+                                    {!isWalletSufficient && (
+                                        <p className="text-[11px] text-rose-500 font-medium mt-1 mb-3">Saldo Anda tidak mencukupi.</p>
+                                    )}
+                                    
                                     <button
                                         onClick={handleWalletPaymentClick}
                                         disabled={!isWalletSufficient || isProcessing}
-                                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition shadow-sm"
+                                        className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 dark:bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-slate-800 dark:hover:bg-indigo-500 disabled:bg-slate-200 disabled:text-slate-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-600 disabled:cursor-not-allowed transition-all active:scale-[0.98] shadow-sm"
                                     >
-                                        <WalletIcon/>
-                                        <span>Bayar</span>
+                                        Bayar via Wallet
                                     </button>
                                 </div>
-                                {!isWalletSufficient && (
-                                    <p className="text-xs text-red-500 mt-2">Saldo tidak mencukupi untuk transaksi ini.</p>
-                                )}
                             </div>
-                            <div className="flex items-center my-4">
-                                <div className="flex-grow border-t border-gray-300 dark:border-gray-600"></div>
-                                <span className="flex-shrink mx-4 text-gray-400 text-sm">ATAU</span>
-                                <div className="flex-grow border-t border-gray-300 dark:border-gray-600"></div>
+
+                            <div className="flex items-center py-2">
+                                <div className="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
+                                <span className="flex-shrink mx-4 text-slate-400 text-[10px] font-bold tracking-wider uppercase">ATAU</span>
+                                <div className="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
                             </div>
-                            <PayPalPayment 
-                                cartItems={cartItems} 
-                                shippingAddress={currentShippingAddress} 
-                            />
-                        </div>
+                            
+                            <div className="rounded-xl overflow-hidden shadow-sm">
+                                <PayPalPayment 
+                                    cartItems={cartItems} 
+                                    shippingAddress={currentShippingAddress} 
+                                />
+                            </div>
+                        </>
                     )}
                     
                     {profile && profile.role === 'admin' && (
                         <div className="mt-8">
-                            <p className="text-center text-sm mb-4 p-3 bg-yellow-100 text-yellow-800 rounded-lg">Admin tidak dapat menggunakan saldo dompet. Silakan gunakan metode pembayaran lain.</p>
+                            <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl mb-4 border border-slate-200 dark:border-slate-700">
+                                <p className="text-center text-xs font-medium text-slate-600 dark:text-slate-400 leading-relaxed">
+                                    Mode Admin: Saldo dompet dinonaktifkan. Silakan gunakan metode pembayaran eksternal (PayPal) untuk simulasi pesanan.
+                                </p>
+                            </div>
                             <PayPalPayment 
                                 cartItems={cartItems} 
                                 shippingAddress={currentShippingAddress} 
@@ -426,11 +505,14 @@ export default function CheckoutPage() {
                     )}
 
                     {!profile && (
-                        <div className="mt-8 text-center text-sm p-3 text-gray-500">
-                            Memuat opsi pembayaran...
+                        <div className="flex justify-center py-4">
+                            <div className="animate-pulse flex items-center gap-2 text-sm text-slate-500">
+                                <div className="h-4 w-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
+                                Memuat opsi...
+                            </div>
                         </div>
                     )}
-                  </>
+                  </div>
               )}
 
             </div>

@@ -3,7 +3,6 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation"; // <-- Mengimpor fungsi redirect
 
 type FormState = {
   message: string | null;
@@ -16,6 +15,7 @@ type VariantFromClient = {
   price: string | number;
   stock: string | number;
   processor: string;
+  graphic?: string;
   ram: string;
   storage: string;
   screen_size: string;
@@ -33,6 +33,7 @@ type VariantPayload = {
   product_id: string;
   stock: number;
   processor: string;
+  graphic?: string | null;
   ram: string;
   storage: string;
   screen_size: string;
@@ -67,7 +68,6 @@ export async function updateProductAndVariants(prevState: FormState, formData: F
     description: formData.get('description') as string,
   };
 
-  // Masukkan gambar ke data update hanya jika ada file baru yang diunggah
   if (publicUrl) {
     laptopUpdateData.image_url = publicUrl;
   }
@@ -101,12 +101,12 @@ export async function updateProductAndVariants(prevState: FormState, formData: F
         product_id: productId,
         stock: Number(v.stock) || 0,
         processor: v.processor,
+        graphic: v.graphic || null,
         ram: v.ram,
         storage: v.storage,
         screen_size: v.screen_size,
       };
       
-      // Jika varian lama (sudah punya id asli dari database), sertakan id-nya untuk di-update
       if (v.id) {
         payload.id = v.id;
       }
@@ -131,12 +131,20 @@ export async function updateProductAndVariants(prevState: FormState, formData: F
     }
   }
 
-  // Bersihkan cache agar data terbaru langsung muncul
+  // =====================================================================
+  // BERSINGHKAN CACHE AGAR DATA TERBARU LANGSUNG MUNCUL DI SEMUA HALAMAN
+  // =====================================================================
   revalidatePath(`/admin/products/${productId}/edit`, 'page');
   revalidatePath('/admin/products', 'page');
   revalidatePath('/products', 'page');
   revalidatePath('/', 'page');
   
-  // 6. Redirect otomatis ke halaman admin/products jika berhasil
-  redirect('/admin/products');
+  // PERBAIKAN: Memaksa Next.js menghapus cache untuk rute detail produk spesifik ini di sisi User
+  revalidatePath(`/laptop/${productId}`, 'page');
+  
+  // PERBAIKAN: Menambahkan cache clearing layout untuk memastikan tidak ada cache tersisa di header/komponen pembungkus
+  revalidatePath(`/laptop/${productId}`, 'layout'); 
+  
+  // PERBAIKAN: Mengembalikan status sukses ke client alih-alih redirect langsung dari server
+  return { message: "Perubahan produk dan varian berhasil disimpan.", type: 'success' };
 }

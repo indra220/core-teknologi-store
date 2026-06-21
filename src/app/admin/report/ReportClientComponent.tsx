@@ -4,8 +4,15 @@
 import { useState, useMemo, useEffect } from "react";
 import { Order, Laptops } from "@/types";
 import Image from "next/image";
-import { Chart as ChartJS, CategoryScale, LinearScale, Title, Tooltip, Legend, PointElement, LineElement, ArcElement } from 'chart.js';
-import { CubeTransparentIcon, BanknotesIcon, UsersIcon } from '@heroicons/react/24/outline';
+import { Chart as ChartJS, CategoryScale, LinearScale, Title, Tooltip, Legend, PointElement, LineElement, ArcElement, Filler } from 'chart.js';
+import {  
+    BanknotesIcon, 
+    UsersIcon, 
+    MagnifyingGlassIcon,
+    DocumentArrowDownIcon,
+    InboxStackIcon,
+    ShoppingBagIcon
+} from '@heroicons/react/24/outline';
 import dynamic from "next/dynamic";
 import { exportToExcel } from "@/lib/utils/export";
 import NProgress from 'nprogress';
@@ -13,23 +20,49 @@ import NProgress from 'nprogress';
 const Line = dynamic(() => import('react-chartjs-2').then(mod => mod.Line), { ssr: false });
 const Doughnut = dynamic(() => import('react-chartjs-2').then(mod => mod.Doughnut), { ssr: false });
 
-ChartJS.register(CategoryScale, LinearScale, Title, Tooltip, Legend, PointElement, LineElement, ArcElement);
+ChartJS.register(CategoryScale, LinearScale, Title, Tooltip, Legend, PointElement, LineElement, ArcElement, Filler);
 
-const SearchIcon = () => <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>;
+// FUNGSI GENERATOR ID SERAGAM
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const generateDisplayId = (order: any) => {
+    if (!order) return 'INV-UNKNOWN';
+    const date = new Date(order.created_at || new Date());
+    const yy = date.getFullYear().toString().slice(-2);
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const dStr = `${yy}${mm}${dd}`;
+    
+    const firstItem = order.order_items?.[0];
+    const categoryChar = firstItem?.product_name ? firstItem.product_name.charAt(0).toUpperCase() : 'P';
+    
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const totalQty = order.order_items?.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0) || 0;
+    const uniqueTail = order.id ? order.id.split('-')[0].substring(0, 4).toUpperCase() : 'XXXX';
+    
+    return `${dStr}${categoryChar}${totalQty}-${uniqueTail}`;
+};
+
 const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-const PdfIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
 
-const StatCard = ({ title, value, icon }: { title: string, value: string, icon: React.ReactNode }) => (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 flex items-center space-x-4 overflow-hidden">
-        <div className="flex-shrink-0 bg-gray-100 dark:bg-gray-700 p-3 rounded-full">{icon}</div>
-        <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">{title}</p>
-            <p className="text-xl sm:text-2xl xl:text-3xl font-extrabold text-gray-900 dark:text-gray-100">{value}</p>
+const StatCard = ({ title, value, icon, colorClass, iconClass }: { title: string, value: string, icon: React.ReactNode, colorClass: string, iconClass: string }) => (
+    <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-sm p-6 flex flex-col relative overflow-hidden group">
+        <div className={`absolute -right-4 -top-4 opacity-[0.03] group-hover:opacity-10 transition-opacity ${iconClass}`}>
+            {icon}
+        </div>
+        <div className="flex items-center gap-4 mb-4 relative z-10">
+            <div className={`h-12 w-12 rounded-full flex items-center justify-center border ${colorClass}`}>
+                {icon}
+            </div>
+            <div>
+                <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{title}</p>
+            </div>
+        </div>
+        <div className="relative z-10">
+            <h3 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">{value}</h3>
         </div>
     </div>
 );
 
-// MENYESUAIKAN: Mengembalikan ke model parameter allLaptops dan tipe data Laptop[]
 export default function ReportClientComponent({ allOrders, allLaptops }: { allOrders: Order[], allLaptops: Laptops[] }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -60,7 +93,8 @@ export default function ReportClientComponent({ allOrders, allLaptops }: { allOr
       datasets: [{
         label: 'Jumlah Produk',
         data: Object.values(brandCounts),
-        backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#38BDF8'],
+        backgroundColor: ['#6366F1', '#10B981', '#F59E0B', '#F43F5E', '#8B5CF6', '#0EA5E9'],
+        borderWidth: 0,
         hoverOffset: 4
       }],
     };
@@ -76,15 +110,17 @@ export default function ReportClientComponent({ allOrders, allLaptops }: { allOr
     return {
       labels: Array.from(sortedTrend.keys()),
       datasets: [{
-        label: `Pendapatan Harian (${timeRange} Hari)`,
+        label: `Pendapatan Harian`,
         data: Array.from(sortedTrend.values()),
         fill: true,
-        borderColor: 'rgb(59, 130, 246)',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-        tension: 0.3,
+        borderColor: '#4F46E5', // Indigo-600
+        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+        tension: 0.4,
+        pointBackgroundColor: '#4F46E5',
+        borderWidth: 2,
       }],
     };
-  }, [ordersInTimeRange, timeRange]);
+  }, [ordersInTimeRange]);
   
   const filteredOrders = useMemo(() => {
     if (!searchTerm) return ordersInTimeRange;
@@ -93,7 +129,7 @@ export default function ReportClientComponent({ allOrders, allLaptops }: { allOr
   
   useEffect(() => { setCurrentPage(1); }, [searchTerm, timeRange]);
 
-  const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
+  const totalPages = Math.ceil(filteredOrders.length / ordersPerPage) || 1;
   const currentOrders = filteredOrders.slice((currentPage - 1) * ordersPerPage, currentPage * ordersPerPage);
   
   const handleExport = async (format: 'pdf' | 'excel') => {
@@ -144,49 +180,84 @@ export default function ReportClientComponent({ allOrders, allLaptops }: { allOr
   return (
     <>
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard title="Pendapatan" value={new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(stats.totalRevenue)} icon={<BanknotesIcon className="h-8 w-8 text-green-500" />} />
-        <StatCard title="Total Pesanan" value={stats.totalOrders.toString()} icon={<CubeTransparentIcon className="h-8 w-8 text-blue-500" />} />
-        <StatCard title="Pelanggan Unik" value={stats.uniqueCustomers.toString()} icon={<UsersIcon className="h-8 w-8 text-indigo-500" />} />
-        <StatCard title="Total Produk" value={stats.totalProducts.toString()} icon={<CubeTransparentIcon className="h-8 w-8 text-yellow-500" />} />
+        <StatCard 
+            title="Pendapatan" 
+            value={new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(stats.totalRevenue)} 
+            icon={<BanknotesIcon className="h-6 w-6" />} 
+            colorClass="bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20"
+            iconClass="text-emerald-600"
+        />
+        <StatCard 
+            title="Pesanan Selesai" 
+            value={stats.totalOrders.toString()} 
+            icon={<InboxStackIcon className="h-6 w-6" />} 
+            colorClass="bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20"
+            iconClass="text-indigo-600"
+        />
+        <StatCard 
+            title="Pelanggan Aktif" 
+            value={stats.uniqueCustomers.toString()} 
+            icon={<UsersIcon className="h-6 w-6" />} 
+            colorClass="bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20"
+            iconClass="text-blue-600"
+        />
+        <StatCard 
+            title="Total Produk" 
+            value={stats.totalProducts.toString()} 
+            icon={<ShoppingBagIcon className="h-6 w-6" />} 
+            colorClass="bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20"
+            iconClass="text-amber-600"
+        />
       </section>
 
-      <section className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 mb-8">
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
-          <div>
-            <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">Buat Laporan Rekap</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Pilih rentang waktu, lalu unduh dalam format PDF atau Excel.</p>
+      <section className="bg-white dark:bg-[#111827] p-5 sm:p-6 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-sm mb-8 flex flex-col sm:flex-row justify-between items-center gap-6">
+        <div>
+          <h3 className="text-base font-bold text-slate-900 dark:text-white">Ekspor Laporan</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Unduh data transaksi dalam rentang waktu terpilih.</p>
+        </div>
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50">
+            {[7, 14, 30].map((days) => (
+              <button 
+                key={days} 
+                onClick={() => setTimeRange(days)} 
+                className={`px-4 py-1.5 text-sm font-semibold rounded-lg transition-all ${
+                    timeRange === days 
+                    ? 'bg-white dark:bg-[#1E293B] text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-200 dark:border-slate-700' 
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                }`}
+              >
+                {days} Hari
+              </button>
+            ))}
           </div>
-          <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-            <div className="flex items-center bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
-              {[7, 14, 30].map((days) => (
-                <button key={days} onClick={() => setTimeRange(days)} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${timeRange === days ? 'bg-white dark:bg-gray-900 text-blue-600 dark:text-blue-300 shadow' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}>
-                  {days} Hari
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center gap-3">
-              <button onClick={() => handleExport('pdf')} className="flex items-center justify-center px-4 py-2 bg-red-50 text-red-700 font-semibold rounded-lg hover:bg-red-100 dark:bg-red-900/50 dark:text-red-300 dark:hover:bg-red-900 transition-all transform hover:scale-105 shadow-sm border border-red-200 dark:border-red-800"><PdfIcon /> PDF</button>
-            </div>
+          <div className="flex items-center gap-2">
+            <button 
+                onClick={() => handleExport('pdf')} 
+                className="flex items-center justify-center px-4 py-2 bg-rose-50 text-rose-700 font-semibold rounded-xl hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20 transition-all shadow-sm border border-rose-200/50 dark:border-rose-500/20 text-sm"
+            >
+                <DocumentArrowDownIcon className="w-4 h-4 mr-2 stroke-2" /> PDF
+            </button>
           </div>
         </div>
       </section>
 
-      <section className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
-        <div className="lg:col-span-3 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Tren Pendapatan</h2>
-          <div className="relative h-80 md:h-96">
+      <section className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
+        <div className="lg:col-span-3 bg-white dark:bg-[#111827] p-6 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-sm flex flex-col">
+          <h2 className="text-base font-bold text-slate-900 dark:text-white mb-6">Tren Pendapatan ({timeRange} Hari)</h2>
+          <div className="relative flex-1 min-h-[300px]">
             {stats.totalOrders > 0 ? (
               <Line data={salesTrendData} options={{ responsive: true, maintainAspectRatio: false }} />
             ) : (
-              <ChartPlaceholder message="Data penjualan belum cukup." />
+              <ChartPlaceholder message="Data penjualan belum cukup untuk rentang waktu ini." />
             )}
           </div>
         </div>
-        <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4 text-center">Distribusi Brand</h2>
-          <div className="relative h-80 md:h-96">
+        <div className="lg:col-span-2 bg-white dark:bg-[#111827] p-6 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-sm flex flex-col">
+          <h2 className="text-base font-bold text-slate-900 dark:text-white mb-6 text-center">Distribusi Kategori/Brand</h2>
+          <div className="relative flex-1 min-h-[300px] flex items-center justify-center">
             {stats.totalProducts > 0 ? (
-              <Doughnut data={brandDistributionData} options={{ responsive: true, maintainAspectRatio: false }} />
+              <Doughnut data={brandDistributionData} options={{ responsive: true, maintainAspectRatio: false, cutout: '70%' }} />
             ) : (
               <ChartPlaceholder message="Belum ada data produk." />
             )}
@@ -194,36 +265,91 @@ export default function ReportClientComponent({ allOrders, allLaptops }: { allOr
         </div>
       </section>
 
-      <section className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4"><div><h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Riwayat Pembelian</h2><p className="text-sm text-gray-500 mt-1">Menampilkan {filteredOrders.length} transaksi terakhir.</p></div><div className="relative w-full sm:max-w-xs"><input type="text" placeholder="Cari username..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500" /><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><SearchIcon /></div></div></div>
-        {currentOrders.length > 0 ? (<div className="space-y-4">{currentOrders.map((order) => (<OrderRow key={order.id} order={order} />))}</div>) : (<div className="text-center py-10 text-gray-500"><p>Tidak ada pesanan yang cocok dengan kriteria Anda.</p></div>)}
-        {totalPages > 1 && (<div className="mt-6 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-5"><button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600">Sebelumnya</button><span className="text-sm text-gray-700 dark:text-gray-300">Halaman <span className="font-bold">{currentPage}</span> dari <span className="font-bold">{totalPages}</span></span><button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600">Berikutnya</button></div>)}
+      <section className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-sm flex flex-col overflow-hidden">
+        <div className="p-5 sm:p-6 border-b border-slate-200/60 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">Riwayat Transaksi</h2>
+                <p className="text-sm text-slate-500 mt-1">Menampilkan {filteredOrders.length} transaksi dalam rentang waktu terpilih.</p>
+            </div>
+            <div className="relative w-full sm:w-80">
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                <input 
+                    type="text" 
+                    placeholder="Cari berdasarkan username..." 
+                    value={searchTerm} 
+                    onChange={(e) => setSearchTerm(e.target.value)} 
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all" 
+                />
+            </div>
+        </div>
+        
+        <div className="p-5 sm:p-6 bg-slate-50/30 dark:bg-slate-800/10">
+            {currentOrders.length > 0 ? (
+                <div className="space-y-4">
+                    {currentOrders.map((order) => (<OrderRow key={order.id} order={order} />))}
+                </div>
+            ) : (
+                <div className="text-center py-12 text-slate-500">
+                    <InboxStackIcon className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                    <p className="text-sm font-medium">Tidak ada pesanan yang cocok dengan kriteria Anda.</p>
+                </div>
+            )}
+        </div>
+
+        {totalPages > 1 && (
+            <div className="px-6 py-4 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-[#111827]">
+                <div className="text-sm text-slate-500 dark:text-slate-400">
+                    Halaman <span className="font-semibold text-slate-900 dark:text-white">{currentPage}</span> dari <span className="font-semibold text-slate-900 dark:text-white">{totalPages}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                        Sebelumnya
+                    </button>
+                    <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                        Selanjutnya
+                    </button>
+                </div>
+            </div>
+        )}
       </section>
     </>
   );
 }
 
 const ChartPlaceholder = ({ message }: { message: string }) => (
-  <div className="absolute inset-0 flex items-center justify-center text-gray-400 dark:text-gray-500 text-sm">{message}</div>
+  <div className="absolute inset-0 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm font-medium">{message}</div>
 );
+
 const OrderRow = ({ order }: { order: Order }) => (
-  <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 transition-all hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700">
-    <div className="flex flex-wrap justify-between items-start gap-2">
-      <div>
-        <p className="font-mono text-sm font-semibold text-gray-800 dark:text-gray-100">{order.paypal_order_id}</p>
-        <p className="text-xs text-gray-500 dark:text-gray-400">oleh <span className="font-medium text-indigo-600 dark:text-indigo-400">{order.profiles?.username || 'N/A'}</span> pada {formatDate(order.created_at)}</p>
+  <div className="bg-white dark:bg-[#1E293B] border border-slate-200/60 dark:border-slate-700 rounded-xl p-5 transition-all hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-500/50">
+    <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+      <div className="flex items-center gap-4">
+        <div className="h-10 w-10 shrink-0 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-sm border border-slate-200/50 dark:border-slate-700">
+            {(order.profiles?.username || 'U').charAt(0).toUpperCase()}
+        </div>
+        <div>
+            {/* PERBAIKAN: Menampilkan ID Seragam pada Laporan */}
+            <p className="font-mono text-sm font-bold text-slate-900 dark:text-white">#{generateDisplayId(order)}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">oleh <span className="font-semibold text-slate-700 dark:text-slate-300">@{order.profiles?.username || 'N/A'}</span> • {formatDate(order.created_at)}</p>
+        </div>
       </div>
       <div className="text-left sm:text-right">
-        <p className="font-semibold text-lg text-gray-800 dark:text-gray-100">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(order.total_amount)}</p>
-        <p className="text-xs text-gray-500 dark:text-gray-400">{order.status}</p>
+        <p className="font-extrabold text-lg text-slate-900 dark:text-white tracking-tight">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(order.total_amount)}</p>
+        <div className="mt-1">
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200/50 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20">
+                {order.status}
+            </span>
+        </div>
       </div>
     </div>
-    <div className="border-t border-gray-200 dark:border-gray-700 mt-3 pt-3 space-y-2">
+    <div className="border-t border-slate-100 dark:border-slate-700/50 mt-4 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
       {order.order_items.map(item => (
-        <div key={item.id} className="flex items-center gap-3 text-sm">
-          <Image src={item.product_image_url || '/placeholder.png'} alt={item.product_name} width={32} height={32} className="h-8 w-8 rounded object-cover border dark:border-gray-600"/>
-          <p className="font-semibold text-gray-700 dark:text-gray-300 flex-grow">{item.product_name}</p>
-          <p className="text-gray-500 dark:text-gray-400 text-xs">{item.quantity} unit</p>
+        <div key={item.id} className="flex items-center gap-3 bg-slate-50/50 dark:bg-slate-800/30 p-2 rounded-lg border border-slate-100 dark:border-slate-700/50">
+          <Image src={item.product_image_url || '/placeholder.png'} alt={item.product_name} width={36} height={36} className="h-9 w-9 rounded-md object-cover border border-slate-200 dark:border-slate-600"/>
+          <div className="flex-grow min-w-0">
+              <p className="font-semibold text-sm text-slate-700 dark:text-slate-300 truncate">{item.product_name}</p>
+              <p className="text-slate-500 dark:text-slate-400 text-[11px] font-medium">{item.quantity} unit</p>
+          </div>
         </div>
       ))}
     </div>

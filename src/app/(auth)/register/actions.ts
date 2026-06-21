@@ -19,12 +19,11 @@ const RegisterSchema = z.object({
   password: z.string().min(6, { message: 'Password minimal 6 karakter.' }),
 });
 
-// Helper untuk mendapatkan URL domain yang benar (Localhost vs Production)
 const getURL = () => {
   let url =
-    process?.env?.NEXT_PUBLIC_SITE_URL ?? // Prioritas 1: URL Production Anda
-    process?.env?.NEXT_PUBLIC_VERCEL_URL ?? // Prioritas 2: URL otomatis dari Vercel (jika pakai Vercel)
-    'http://localhost:3000'; // Prioritas 3: Fallback ke localhost
+    process?.env?.NEXT_PUBLIC_SITE_URL ?? 
+    process?.env?.NEXT_PUBLIC_VERCEL_URL ?? 
+    'http://localhost:3000'; 
   
   url = url.includes('http') ? url : `https://${url}`;
   url = url.charAt(url.length - 1) === '/' ? url.slice(0, -1) : url;
@@ -32,77 +31,39 @@ const getURL = () => {
 };
 
 export async function registerUser(prevState: FormState, formData: FormData): Promise<FormState> {
-  const validatedFields = RegisterSchema.safeParse(
-    Object.fromEntries(formData.entries())
-  );
+  const validatedFields = RegisterSchema.safeParse(Object.fromEntries(formData.entries()));
 
   if (!validatedFields.success) {
     const errorMessage = validatedFields.error.flatten().fieldErrors;
     const firstError = Object.values(errorMessage).flat()[0] || 'Input tidak valid.';
-    return {
-      message: firstError,
-      type: 'error',
-    };
+    return { message: firstError, type: 'error' };
   }
 
   const { email, password, fullName, username } = validatedFields.data;
   const supabase = await createClient();
 
-  const { data: existingUser } = await supabase
-    .from('profiles')
-    .select('id')
-    .ilike('username', username)
-    .single();
+  const { data: existingUser } = await supabase.from('profiles').select('id').ilike('username', username).single();
 
-  if (existingUser) {
-    return { message: 'Username sudah digunakan. Silakan pilih yang lain.', type: 'error' };
-  }
+  if (existingUser) return { message: 'Username sudah digunakan. Silakan pilih yang lain.', type: 'error' };
   
-  // Membuat URL avatar otomatis berdasarkan inisial Nama Lengkap
   const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random&color=fff&size=150`;
 
   const { data, error: signUpError } = await supabase.auth.signUp({
-    email,
-    password,
+    email, password,
     options: {
-      // Mengarahkan email verifikasi ke URL yang dinamis
       emailRedirectTo: `${getURL()}/auth/callback`,
-      data: {
-        full_name: fullName,
-        username: username,
-        avatar_url: avatarUrl, // Menyisipkan URL avatar ke metadata auth
-      },
+      data: { full_name: fullName, username: username, avatar_url: avatarUrl },
     },
   });
 
-  if (signUpError) {
-    return { message: signUpError.message, type: 'error' };
-  }
+  if (signUpError) return { message: signUpError.message, type: 'error' };
 
   if (data.user) {
     const supabaseAdmin = await createClient(true); 
-    
-    // Memastikan tabel profiles terupdate dengan avatar_url
-    await supabaseAdmin
-        .from('profiles')
-        .update({ avatar_url: avatarUrl })
-        .eq('id', data.user.id);
-    
-    const { error: notificationError } = await supabaseAdmin.from('notifications').insert({
-      user_id: data.user.id,
-      message: 'Selamat datang! Yuk, lengkapi profil Anda sekarang.',
-      link: '/profile/edit',
-    });
-
-    if (notificationError) {
-      console.error('Gagal membuat notifikasi selamat datang:', notificationError.message);
-    }
-
+    await supabaseAdmin.from('profiles').update({ avatar_url: avatarUrl }).eq('id', data.user.id);
+    await supabaseAdmin.from('notifications').insert({ user_id: data.user.id, message: 'Selamat datang! Yuk, lengkapi profil Anda sekarang.', link: '/profile/edit' });
     revalidatePath('/', 'layout');
   }
 
-  return { 
-    message: 'Registrasi berhasil! Silakan cek email Anda untuk verifikasi.', 
-    type: 'success' 
-  };
+  return { message: 'Registrasi berhasil! Silakan cek email Anda untuk verifikasi.', type: 'success' };
 }

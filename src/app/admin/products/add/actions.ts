@@ -3,7 +3,6 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
 type FormState = {
@@ -11,13 +10,14 @@ type FormState = {
   type: 'success' | 'error' | null;
 };
 
-// Skema Varian (Harga dimasukkan kembali ke sini untuk validasi UI)
+// Skema Varian
 const VariantSchema = z.object({
   price: z.string().min(1, "Harga wajib diisi."),
   stock: z.string().refine(val => !isNaN(parseInt(val, 10)) && parseInt(val, 10) >= 0, {
     message: "Stok harus berupa angka positif."
   }),
   processor: z.string().optional(),
+  graphic: z.string().optional(),
   ram: z.string().optional(),
   storage: z.string().optional(),
   screen_size: z.string().optional(),
@@ -52,7 +52,7 @@ export async function addProductWithVariants(prevState: FormState, formData: For
 
   const { name, brand, description, image, variants } = validatedFields.data;
 
-  // 1. Upload Gambar (Jika Ada)
+  // 1. Upload Gambar
   let publicUrl = null;
   if (image && image.size > 0) {
     const fileExtension = image.name.split('.').pop();
@@ -67,8 +67,6 @@ export async function addProductWithVariants(prevState: FormState, formData: For
 
   // 2. Insert ke Tabel Master (products)
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
-  
-  // MENGAMBIL HARGA DARI VARIAN PERTAMA UNTUK TABEL UTAMA
   const numericPrice = Number(String(variants[0].price).replace(/[^0-9]/g, ""));
 
   const { data: newProduct, error: productError } = await supabase
@@ -96,15 +94,15 @@ export async function addProductWithVariants(prevState: FormState, formData: For
     });
 
   if (laptopsError) {
-    await supabase.from('products').delete().eq('id', newProduct.id); // Rollback
+    await supabase.from('products').delete().eq('id', newProduct.id); 
     return { message: "Gagal menyimpan detail laptop: " + laptopsError.message, type: 'error' };
   }
   
   // 4. Insert ke Tabel Inventory (product_variants)
-  // Perhatikan: Kita TIDAK memasukkan 'price' ke sini, karena sudah di tabel products
   const variantsToInsert = variants.map((variant) => ({
     product_id: newProduct.id,
     processor: variant.processor || null,
+    graphic: variant.graphic || null,
     ram: variant.ram || null,
     storage: variant.storage || null,
     screen_size: variant.screen_size || null,
@@ -114,7 +112,7 @@ export async function addProductWithVariants(prevState: FormState, formData: For
   const { error: variantsError } = await supabase.from('product_variants').insert(variantsToInsert);
 
   if (variantsError) {
-    await supabase.from('products').delete().eq('id', newProduct.id); // Rollback
+    await supabase.from('products').delete().eq('id', newProduct.id); 
     return { message: "Gagal menambahkan varian: " + variantsError.message, type: 'error' };
   }
 
@@ -122,5 +120,6 @@ export async function addProductWithVariants(prevState: FormState, formData: For
   revalidatePath('/products', 'page');
   revalidatePath('/', 'page');
   
-  redirect('/admin/products');
+  // PERBAIKAN: Mengembalikan status success untuk memicu Pop-Up Modal di sisi Client
+  return { message: "Produk beserta varian berhasil ditambahkan!", type: 'success' };
 }

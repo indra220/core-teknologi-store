@@ -1,5 +1,5 @@
 // src/lib/supabase/server.ts
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 // Tambahkan parameter opsional 'isAdmin'
@@ -16,21 +16,20 @@ export async function createClient(isAdmin = false) {
     supabaseKey, // Gunakan kunci yang sudah dipilih
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
+        // PERBAIKAN: Menggunakan getAll() untuk mendukung chunking cookie berukuran besar
+        getAll() {
+          return cookieStore.getAll()
         },
-        set(name: string, value: string, options: CookieOptions) {
+        // PERBAIKAN: Menggunakan setAll() yang bisa menangani pembuatan & penghapusan banyak cookie sekaligus
+        setAll(cookiesToSet) {
           try {
-            cookieStore.set({ name, value, ...options })
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options)
+            })
           } catch (_error) {
-            // Ini bisa diabaikan jika Anda menggunakan middleware
-          }
-        },
-        remove(name: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value: '', ...options })
-          } catch (_error) {
-            // Ini bisa diabaikan jika Anda menggunakan middleware
+            // Error ini bisa diabaikan dengan aman jika dipanggil dari Server Component,
+            // karena Next.js tidak mengizinkan modifikasi cookie saat merender halaman Server.
+            // Modifikasi akan ditangani oleh Middleware jika Anda menggunakannya.
           }
         },
       },

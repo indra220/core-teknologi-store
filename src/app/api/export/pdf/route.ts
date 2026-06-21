@@ -1,3 +1,4 @@
+// src/app/api/export/pdf/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import jsPDF from 'jspdf';
@@ -6,15 +7,40 @@ import fs from 'fs';
 import path from 'path';
 import { Order } from '@/types';
 
-// Fungsi helper (tidak berubah)
+interface ExportOrderItem {
+    product_id: string;
+    product_name?: string;
+    brand?: string;
+    quantity: number;
+    varian?: string;
+    variant?: string;
+    variant_name?: string;
+    product_variant?: string;
+}
+
+interface OrderExtended extends Omit<Order, 'order_items' | 'profiles'> {
+    order_items?: ExportOrderItem[];
+    profiles?: {
+        username?: string | null;
+        full_name?: string | null;
+    } | null;
+}
+
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
         style: 'currency', currency: 'IDR', minimumFractionDigits: 0,
     }).format(amount);
 };
+
+const formatNumberOnly = (amount: number) => {
+    return new Intl.NumberFormat('id-ID', {
+        minimumFractionDigits: 0,
+    }).format(amount);
+};
+
 const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('id-ID', {
-        day: '2-digit', month: 'long', year: 'numeric'
+        day: '2-digit', month: 'short', year: 'numeric'
     });
 };
 
@@ -27,14 +53,13 @@ export async function GET(request: NextRequest) {
 
         const supabase = await createClient();
 
-        // Logika pengambilan data (tidak berubah)
         const now = new Date();
         const startDate = new Date();
         startDate.setDate(now.getDate() - timeRange);
 
         let query = supabase
             .from('orders')
-            .select('*, profiles ( username )')
+            .select('*, profiles ( username, full_name ), order_items (*)')
             .eq('status', 'Selesai')
             .gte('created_at', startDate.toISOString())
             .order('created_at', { ascending: false });
@@ -44,145 +69,175 @@ export async function GET(request: NextRequest) {
         }
 
         const { data: ordersData, error: ordersError } = await query;
-        const orders = ordersData as unknown as Order[];
+        const orders = (ordersData || []) as unknown as OrderExtended[];
 
         if (ordersError) {
             throw new Error(`Gagal mengambil data pesanan: ${ordersError.message}`);
         }
 
-        // --- Inisialisasi Dokumen dan Variabel Desain ---
-        const doc = new jsPDF();
-        const pageHeight = doc.internal.pageSize.height;
+        const productIds = [
+            ...new Set(
+                orders.flatMap(o => o.order_items?.map((i: ExportOrderItem) => i.product_id)).filter(Boolean)
+            )
+        ] as string[];
+
+        let laptopsMap: Record<string, { brand: string, name: string }> = {};
+        
+        if (productIds.length > 0) {
+            const { data: laptops } = await supabase
+                .from('laptops')
+                .select('product_id, brand, name')
+                .in('product_id', productIds);
+                
+            if (laptops) {
+                laptopsMap = laptops.reduce((acc, l) => {
+                    if (l.product_id) acc[l.product_id] = { brand: l.brand, name: l.name };
+                    return acc;
+                }, {} as Record<string, { brand: string, name: string }>);
+            }
+        }
+
+        // Dikembalikan ke orientasi Potret ('p')
+        const doc = new jsPDF('p', 'mm', 'a4');
         const pageWidth = doc.internal.pageSize.width;
+        const pageHeight = doc.internal.pageSize.height;
 
         const COLORS = {
-            primary: '#2563EB',      // Biru-600
-            textDark: '#111827',     // Abu-abu-900
-            text: '#374151',         // Abu-abu-700
-            textLight: '#6B7280',    // Abu-abu-500
-            border: '#E5E7EB',       // Abu-abu-200
-            white: '#FFFFFF'
+            primary: '#4F46E5', heading: '#0F172A', text: '#334155',
+            muted: '#64748B', border: '#E2E8F0', bgLight: '#F8FAFC'
         };
         const FONT = 'helvetica';
 
-        // --- Header Dokumen ---
         try {
             const imagePath = path.join(process.cwd(), 'public', 'images', 'Logo-core.png');
             const imageBuffer = fs.readFileSync(imagePath);
-            doc.addImage(imageBuffer, 'PNG', 15, 12, 22, 22);
-        } catch (e) { console.error("Gagal memuat file logo:", e); }
+            doc.addImage(imageBuffer, 'PNG', 14, 15, 20, 20);
+        } catch (e) { 
+            console.error("Gagal memuat file logo:", e); 
+            doc.setFont(FONT, 'bold'); doc.setFontSize(16); doc.setTextColor(COLORS.heading);
+            doc.text('CORE TEKNOLOGI', 14, 25);
+        }
 
-        doc.setFont(FONT, 'bold');
-        doc.setFontSize(20);
-        doc.setTextColor(COLORS.textDark);
-        doc.text('Laporan Penjualan', pageWidth - 15, 20, { align: 'right' });
+        doc.setFont(FONT, 'bold'); doc.setFontSize(18); doc.setTextColor(COLORS.heading);
+        doc.text('LAPORAN PENJUALAN', pageWidth - 14, 22, { align: 'right' });
 
-        doc.setFont(FONT, 'normal');
-        doc.setFontSize(10);
-        doc.setTextColor(COLORS.textLight);
-        doc.text('Core Teknologi Store', pageWidth - 15, 27, { align: 'right' });
-        doc.text(rangeText, pageWidth - 15, 32, { align: 'right' });
+        doc.setFont(FONT, 'normal'); doc.setFontSize(9); doc.setTextColor(COLORS.muted);
+        doc.text(`Periode: ${rangeText}`, pageWidth - 14, 28, { align: 'right' });
+        doc.text(`Dicetak pada: ${formatDate(new Date().toISOString())}`, pageWidth - 14, 33, { align: 'right' });
 
-        // --- Kartu Statistik (Summary Cards) ---
+        doc.setDrawColor(COLORS.border); doc.setLineWidth(0.5);
+        doc.line(14, 40, pageWidth - 14, 40);
+
         const totalRevenue = orders.reduce((sum, order) => sum + order.total_amount, 0);
         const uniqueCustomers = new Set(orders.map(o => o.user_id)).size;
+        const startY = 48;
+
+        doc.setFillColor(COLORS.bgLight); doc.setDrawColor(COLORS.border); doc.setLineWidth(0.2);
+        doc.roundedRect(14, startY, pageWidth - 28, 24, 2, 2, 'FD');
+
+        // Koordinat Ringkasan disesuaikan ulang untuk ukuran kertas Potret
+        doc.setFontSize(8); doc.setTextColor(COLORS.muted); doc.setFont(FONT, 'bold');
+        doc.text('TOTAL PENDAPATAN', 20, startY + 8);
+        doc.setFontSize(14); doc.setTextColor(COLORS.primary);
+        doc.text(formatCurrency(totalRevenue), 20, startY + 18);
+
+        doc.setDrawColor(COLORS.border); doc.line(75, startY + 4, 75, startY + 20);
+
+        doc.setFontSize(8); doc.setTextColor(COLORS.muted); doc.setFont(FONT, 'bold');
+        doc.text('TOTAL TRANSAKSI', 82, startY + 8);
+        doc.setFontSize(14); doc.setTextColor(COLORS.heading);
+        doc.text(`${orders.length} Pesanan`, 82, startY + 18);
+
+        doc.line(135, startY + 4, 135, startY + 20);
+
+        doc.setFontSize(8); doc.setTextColor(COLORS.muted); doc.setFont(FONT, 'bold');
+        doc.text('PELANGGAN UNIK', 142, startY + 8);
+        doc.setFontSize(14); doc.setTextColor(COLORS.heading);
+        doc.text(`${uniqueCustomers} Akun`, 142, startY + 18);
+
+        const tableColumn = ["NO", "TANGGAL", "NO. PESANAN", "PELANGGAN", "DETAIL PRODUK", "TOTAL (Rp)"];
         
-        const startY = 45; // Posisi Y awal untuk kartu
-        const cardWidth = (pageWidth - 45) / 3;
-        const cardHeight = 25;
-
-        // Fungsi untuk menggambar kartu
-        const drawCard = (x: number, y: number, title: string, value: string, iconColor: string) => {
-            doc.setFillColor(COLORS.white);
-            doc.setDrawColor(COLORS.border);
-            doc.setLineWidth(0.3);
-            doc.roundedRect(x, y, cardWidth, cardHeight, 3, 3, 'FD'); // Kartu dengan sudut tumpul
-
-            doc.setFillColor(iconColor);
-            doc.circle(x + 10, y + 13, 3, 'F'); // Lingkaran sebagai ikon visual
-
-            doc.setFontSize(9).setTextColor(COLORS.textLight).setFont(FONT, 'normal');
-            doc.text(title, x + 18, y + 10);
+        const tableRows = orders.map((order, index) => {
+            const rowNumber = String(index + 1);
+            const orderIdFormatted = order.paypal_order_id || `INV-${order.id.split('-')[0].toUpperCase()}`;
+            const customerName = order.profiles?.full_name || order.profiles?.username || 'Tanpa Nama';
             
-            doc.setFontSize(14).setTextColor(COLORS.textDark).setFont(FONT, 'bold');
-            doc.text(value, x + 18, y + 18);
-        };
-        
-        drawCard(15, startY, 'Total Pendapatan', formatCurrency(totalRevenue), '#10B981'); // Hijau
-        drawCard(15 + cardWidth + 7.5, startY, 'Total Pesanan', orders.length.toString(), '#3B82F6'); // Biru
-        drawCard(15 + (cardWidth + 7.5) * 2, startY, 'Pelanggan Unik', uniqueCustomers.toString(), '#8B5CF6'); // Ungu
-        
-        doc.setFont(FONT, 'normal'); // Reset font style
+            const productDetails = order.order_items?.map((item: ExportOrderItem) => {
+                const laptopInfo = laptopsMap[item.product_id];
+                const name = item.product_name || laptopInfo?.name || 'Produk Tidak Diketahui';
+                const brand = item.brand || laptopInfo?.brand || '-';
+                
+                const varian = item.variant_name || item.variant || item.varian || item.product_variant || null; 
+                const varianText = varian ? ` - ${varian}` : '';
+                
+                return `• ${name} (x${item.quantity})\n  Brand: ${brand}${varianText}`;
+            }).join('\n\n') || '-';
 
-        // --- Tabel Data dengan Desain Baru ---
-        const tableColumn = ["#", "Tanggal", "ID Pesanan", "Pengguna", "Total", "Status"];
-        
-        // Perbaikan dilakukan pada bagian ini untuk menghindari nilai 'undefined'
-        const tableRows = orders.map((order, index) => [
-            index + 1,
-            formatDate(order.created_at),
-            order.paypal_order_id ?? '-', // Menggunakan operator ?? agar fallback ke string jika null/undefined
-            order.profiles?.username ?? 'N/A',
-            formatCurrency(order.total_amount),
-            order.status,
-        ]);
+            return [
+                rowNumber,
+                formatDate(order.created_at),
+                orderIdFormatted,
+                customerName,
+                productDetails,
+                formatNumberOnly(order.total_amount),
+            ];
+        });
 
         autoTable(doc, {
-            startY: startY + cardHeight + 12,
+            startY: startY + 32,
             head: [tableColumn],
             body: tableRows,
-            theme: 'striped', 
-            styles: {
-                font: FONT,
-                fontSize: 9,
-                cellPadding: 2.5,
-                textColor: COLORS.text,
+            theme: 'plain', 
+            styles: { 
+                font: FONT, 
+                fontSize: 8, 
+                valign: 'middle',
+                cellPadding: { top: 4, right: 3, bottom: 4, left: 3 }, 
+                textColor: COLORS.text 
             },
-            headStyles: {
-                fillColor: '#F3F4F6', 
-                textColor: COLORS.textDark,
-                fontStyle: 'bold',
-                fontSize: 9.5,
-                halign: 'center'
+            headStyles: { 
+                fillColor: COLORS.bgLight, 
+                textColor: COLORS.muted, 
+                fontStyle: 'bold', 
+                fontSize: 7.5, 
+                valign: 'middle',
+                lineWidth: { bottom: 0.5, top: 0.5 }, 
+                lineColor: COLORS.border 
             },
-            columnStyles: {
-                0: { halign: 'center', cellWidth: 8 },
-                3: { fontStyle: 'bold' },
-                4: { halign: 'right' },
-                5: { halign: 'center' }
+            bodyStyles: { 
+                lineWidth: { bottom: 0.2 }, 
+                lineColor: COLORS.border 
+            },
+            // Penyesuaian Lebar Kolom untuk Potret (Total lebar tabel = 182mm)
+            columnStyles: { 
+                0: { cellWidth: 12, halign: 'center', fontStyle: 'bold', textColor: COLORS.heading }, // NO (Dilebarkan agar sejajar)
+                1: { cellWidth: 20 }, // TANGGAL
+                2: { cellWidth: 32, fontStyle: 'bold' }, // NO PESANAN
+                3: { cellWidth: 35 }, // PELANGGAN
+                4: { cellWidth: 58 }, // DETAIL PRODUK
+                5: { cellWidth: 25, halign: 'right', fontStyle: 'bold', textColor: COLORS.heading } // TOTAL (Rp)
+            },
+            didParseCell: function(data) {
+                if (data.section === 'head' && data.column.index === 0) data.cell.styles.halign = 'center';
+                if (data.section === 'head' && data.column.index === 5) data.cell.styles.halign = 'right';
             },
             didDrawPage: (data) => {
-              // --- Footer Profesional ---
-              doc.setFontSize(8);
-              doc.setTextColor(COLORS.textLight);
-              doc.setDrawColor(COLORS.border);
-              doc.line(15, pageHeight - 15, pageWidth - 15, pageHeight - 15);
-              doc.text(
-                  `Laporan Penjualan - Core Teknologi Store`,
-                  data.settings.margin.left,
-                  pageHeight - 10
-              );
-              doc.text(
-                  `Halaman ${data.pageNumber} dari ${doc.getNumberOfPages()}`,
-                  pageWidth - data.settings.margin.right,
-                  pageHeight - 10,
-                  { align: 'right' }
-              );
+              const footerY = pageHeight - 15;
+              doc.setDrawColor(COLORS.border); doc.setLineWidth(0.5); doc.line(14, footerY - 5, pageWidth - 14, footerY - 5);
+              doc.setFontSize(7.5); doc.setTextColor(COLORS.muted); doc.setFont(FONT, 'normal');
+              doc.text(`Dokumen ini dibuat secara otomatis oleh sistem Core Teknologi Store.`, 14, footerY);
+              doc.text(`Hal ${data.pageNumber} / ${doc.getNumberOfPages()}`, pageWidth - 14, footerY, { align: 'right' });
             },
         });
 
         const pdfBuffer = doc.output('arraybuffer');
-
-        return new NextResponse(pdfBuffer, {
-            headers: {
-                'Content-Type': 'application/pdf',
-                'Content-Disposition': `attachment; filename="laporan_penjualan_${rangeText.replace(/ /g, '_').toLowerCase()}.pdf"`,
-            },
+        return new NextResponse(pdfBuffer, { 
+            headers: { 
+                'Content-Type': 'application/pdf', 
+                'Content-Disposition': `attachment; filename="laporan_penjualan_${rangeText.replace(/ /g, '_').toLowerCase()}.pdf"` 
+            } 
         });
-
     } catch (error: unknown) {
-        console.error('API Error:', error);
-        const message = error instanceof Error ? error.message : 'Terjadi kesalahan pada server';
-        return NextResponse.json({ error: message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : 'Terjadi kesalahan' }, { status: 500 });
     }
 }

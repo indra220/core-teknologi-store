@@ -1,40 +1,45 @@
+// src/components/notifications/NotificationProvider.tsx
 'use client';
 
-import { createContext, useState, useContext, ReactNode, useCallback } from 'react'; // 1. Impor useCallback
+import { createContext, useState, useContext, ReactNode, useCallback } from 'react';
+import { CheckCircleIcon, XCircleIcon, InformationCircleIcon } from '@heroicons/react/24/solid';
 
-// Tipe untuk notifikasi
 type NotificationType = 'success' | 'error' | 'info';
 interface Notification {
   message: string;
   type: NotificationType;
 }
 
-// Tipe untuk context
 interface NotificationContextType {
   showNotification: (message: string, type: NotificationType) => void;
 }
 
-// Buat Context
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
-// Buat Provider Component
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notification, setNotification] = useState<Notification | null>(null);
 
-  // 2. Bungkus fungsi dengan useCallback
   const showNotification = useCallback((message: string, type: NotificationType) => {
     setNotification({ message, type });
-    // Notifikasi akan hilang setelah 4 detik
     setTimeout(() => {
       setNotification(null);
     }, 4000);
-  }, []); // 3. Beri dependensi kosong agar fungsi tidak dibuat ulang
+  }, []);
 
-  // Logika warna berdasarkan tipe notifikasi
+  // Desain Enterprise: Latar belakang agak transparan (backdrop-blur) dengan border tipis
   const notificationStyles = {
-    success: 'bg-green-500 text-white',
-    error: 'bg-red-500 text-white',
-    info: 'bg-blue-500 text-white',
+    success: {
+        bg: 'bg-emerald-50/95 dark:bg-emerald-500/10 border-emerald-200/60 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-400',
+        icon: <CheckCircleIcon className="h-5 w-5 text-emerald-500" />
+    },
+    error: {
+        bg: 'bg-rose-50/95 dark:bg-rose-500/10 border-rose-200/60 dark:border-rose-500/20 text-rose-800 dark:text-rose-400',
+        icon: <XCircleIcon className="h-5 w-5 text-rose-500" />
+    },
+    info: {
+        bg: 'bg-indigo-50/95 dark:bg-indigo-500/10 border-indigo-200/60 dark:border-indigo-500/20 text-indigo-800 dark:text-indigo-400',
+        icon: <InformationCircleIcon className="h-5 w-5 text-indigo-500" />
+    },
   };
 
   return (
@@ -42,8 +47,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       {children}
       {notification && (
         <div
-          className={`fixed top-5 left-1/2 -translate-x-1/2 p-4 rounded-lg shadow-lg animate-fade-in-down z-50 ${notificationStyles[notification.type]}`}
+          className={`fixed top-6 left-1/2 -translate-x-1/2 px-5 py-3.5 rounded-2xl shadow-xl backdrop-blur-md border animate-fade-in-down z-[999] flex items-center gap-3 font-semibold text-sm max-w-sm w-max ${notificationStyles[notification.type].bg}`}
         >
+          {notificationStyles[notification.type].icon}
           {notification.message}
         </div>
       )}
@@ -51,7 +57,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Buat custom hook untuk kemudahan penggunaan
 export function useNotification() {
   const context = useContext(NotificationContext);
   if (!context) {

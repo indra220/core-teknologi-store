@@ -1,21 +1,34 @@
+// src/app/not-found.tsx
 import Link from 'next/link';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 export default function NotFound() {
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-64px)] bg-gray-50">
-      <div className="text-center">
-        <h1 className="text-9xl font-extrabold text-gray-800 tracking-widest">404</h1>
-        <div className="bg-blue-600 px-2 text-sm text-white rounded rotate-12 absolute">
-          Page Not Found
-        </div>
-        <p className="mt-4 text-lg text-gray-600">Maaf, halaman yang Anda cari tidak dapat ditemukan.</p>
-        <Link 
-          href="/" 
-          className="mt-8 inline-block bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-blue-700 transition"
-        >
-          Kembali ke Beranda
-        </Link>
+    <div className="flex flex-col items-center justify-center flex-1 min-h-[70vh] text-center animate-in fade-in zoom-in-95 duration-500">
+      
+      {/* Dekorasi Latar (Glow Effect) */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-indigo-500/10 dark:bg-indigo-500/20 blur-[100px] rounded-full pointer-events-none -z-10" />
+
+      <h1 className="text-[150px] sm:text-[200px] font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-slate-800 to-slate-400 dark:from-slate-100 dark:to-slate-800 leading-none tracking-tighter select-none">
+        404
+      </h1>
+      
+      <div className="mt-4 space-y-2">
+        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
+          Halaman Tidak Ditemukan
+        </h2>
+        <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+          Maaf, tautan yang Anda ikuti mungkin rusak, atau halaman telah dihapus.
+        </p>
       </div>
+
+      <Link 
+        href="/" 
+        className="mt-10 inline-flex items-center justify-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 font-semibold px-6 py-3 rounded-xl transition-all shadow-sm active:scale-95 group"
+      >
+        <ArrowLeftIcon className="h-5 w-5 transition-transform group-hover:-translate-x-1" />
+        Kembali ke Beranda
+      </Link>
     </div>
   );
 }

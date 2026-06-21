@@ -9,7 +9,15 @@ import type { User } from "@supabase/supabase-js";
 import type { Product as BaseProduct, ProductVariant } from "@/types";
 import { useCart } from "@/context/CartContext";
 
-// Penyesuaian TypeScript agar mengenali price di tabel induk
+// Pastikan icon-icon ini diimpor agar sesuai dengan desain di screenshot Anda
+import { 
+  PlusIcon, 
+  MinusIcon, 
+  ShoppingCartIcon,
+  CheckCircleIcon,
+  ShieldCheckIcon 
+} from '@heroicons/react/24/outline';
+
 type Product = BaseProduct & { price?: number };
 
 const simplifyProcessor = (spec: string | null): string => {
@@ -21,25 +29,19 @@ const simplifyProcessor = (spec: string | null): string => {
 const simplifyRam = (spec: string | null): string => {
   if (!spec) return 'N/A';
   const s = spec.toUpperCase();
-  
   const sizeMatch = s.match(/(\d+\s*GB)/);
   if (!sizeMatch) return spec; 
   const size = sizeMatch[0].replace(/\s/g, ''); 
 
-  if (s.includes('DDR5') || s.includes('LPDDR5')) {
-    return `${size} DDR5`;
-  }
-  if (s.includes('DDR4') || s.includes('LPDDR4')) {
-    return `${size} DDR4`;
-  }
-  
+  if (s.includes('DDR5') || s.includes('LPDDR5')) return `${size} DDR5`;
+  if (s.includes('DDR4') || s.includes('LPDDR4')) return `${size} DDR4`;
   return size; 
 };
 
 const simplifyStorage = (spec: string | null): string => {
   if (!spec) return 'N/A';
   const sizeMatch = spec.match(/(\d+(GB|TB))/);
-  const typeMatch = spec.toLowerCase().includes('nvme') ? 'NVMe SSD' : 'SSD';
+  const typeMatch = spec.toLowerCase().includes('nvme') ? 'NVMe' : 'SSD';
   return sizeMatch ? `${sizeMatch[0]} ${typeMatch}` : spec;
 };
 
@@ -57,8 +59,8 @@ function VariantOptionGroup({ title, options, getLabel, selectedValue, onSelect,
 
   return (
     <div className="mb-6">
-      <h3 className="text-md font-semibold text-gray-800 dark:text-gray-100 mb-3">{title}</h3>
-      <div className="flex flex-wrap gap-3">
+      <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">{title}</h3>
+      <div className="flex flex-wrap gap-2.5">
         {options.map((option) => {
           const isDisabled = isOptionDisabled(option);
           const isSelected = option === selectedValue;
@@ -68,13 +70,13 @@ function VariantOptionGroup({ title, options, getLabel, selectedValue, onSelect,
               onClick={() => onSelect(option)}
               disabled={isDisabled}
               className={`
-                px-4 py-2 text-sm font-medium rounded-lg border transition-all duration-200 ease-in-out
+                px-4 py-2.5 text-sm font-semibold rounded-xl border transition-all duration-200 ease-in-out
                 ${isSelected
-                  ? 'border-blue-600 bg-blue-50 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 ring-2 ring-blue-500/50'
-                  : 'border-gray-300 bg-white text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 hover:border-blue-500'}
+                  ? 'border-[#6366F1] bg-[#6366F1]/10 text-[#818CF8] shadow-sm ring-1 ring-[#6366F1]/50'
+                  : 'border-slate-700 bg-slate-800/50 text-slate-300 hover:border-slate-500'}
                 ${isDisabled
-                  ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed dark:bg-gray-700/50 dark:border-gray-700 opacity-60'
-                  : ''}
+                  ? 'opacity-40 cursor-not-allowed bg-slate-900 border-slate-800 text-slate-600'
+                  : 'active:scale-95'}
               `}
             >
               {getLabel(option)}
@@ -87,7 +89,7 @@ function VariantOptionGroup({ title, options, getLabel, selectedValue, onSelect,
 }
 
 const STATIC_RAM_OPTIONS = ['8GB DDR5', '16GB DDR5', '32GB DDR5', '8GB DDR4', '16GB DDR4'];
-const STATIC_STORAGE_OPTIONS = ['256GB NVMe SSD', '512GB NVMe SSD', '1TB NVMe SSD', '256GB SSD', '512GB SSD'];
+const STATIC_STORAGE_OPTIONS = ['256GB NVMe', '512GB NVMe', '1TB NVMe', '256GB SSD', '512GB SSD'];
 
 export default function ProductDetailClient({ product }: { product: Product }) {
   const allVariants = useMemo(() => product.product_variants || [], [product.product_variants]);
@@ -174,16 +176,22 @@ export default function ProductDetailClient({ product }: { product: Product }) {
     }
   };
 
-  // Perbaikan: Harga sekarang diambil dari product.price, bukan currentVariant.price
+  // Mengalikan harga dasar dengan kuantitas agar dinamis
+  const basePrice = product.price || 0;
+  const totalPrice = basePrice * quantity;
+  
+  // Format harga seperti di screenshot (tanpa desimal ,00)
   const formattedPrice = new Intl.NumberFormat('id-ID', {
-    style: 'currency', currency: 'IDR', minimumFractionDigits: 0
-  }).format(product.price || 0);
+    style: 'currency', 
+    currency: 'IDR', 
+    minimumFractionDigits: 0
+  }).format(totalPrice);
 
   return (
-    <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-8">
+    <div className="mt-8 pt-8 border-t border-slate-800 flex flex-col h-full">
       
       <VariantOptionGroup
-        title="Prosesor"
+        title="Konfigurasi Prosesor"
         options={processorOptions}
         getLabel={(spec) => simplifyProcessor(spec)}
         selectedValue={selectedProcessor}
@@ -191,7 +199,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
         isOptionDisabled={() => false} 
       />
       <VariantOptionGroup
-        title="RAM"
+        title="Memori (RAM)"
         options={STATIC_RAM_OPTIONS}
         getLabel={(spec) => spec} 
         selectedValue={simplifyRam(selectedRam)}
@@ -199,7 +207,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
         isOptionDisabled={isRamDisabled}
       />
       <VariantOptionGroup
-        title="Penyimpanan"
+        title="Penyimpanan (Storage)"
         options={STATIC_STORAGE_OPTIONS}
         getLabel={(spec) => spec} 
         selectedValue={simplifyStorage(selectedStorage)}
@@ -207,40 +215,61 @@ export default function ProductDetailClient({ product }: { product: Product }) {
         isOptionDisabled={isStorageDisabled}
       />
 
-      <div className="mt-auto pt-10">
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-8">
-          <div>
-              <p className="text-4xl sm:text-5xl font-bold text-blue-600 dark:text-blue-400">
-                {currentVariant ? formattedPrice : 'Pilih Varian'}
-              </p>
-               <p className={`mt-2 font-semibold ${currentVariant && currentVariant.stock > 0 ? 'text-green-600' : 'text-red-500'}`}>
-                {currentVariant ? `Stok: ${currentVariant.stock}` : 'Kombinasi tidak tersedia'}
-              </p>
+      <div className="mt-auto pt-6">
+        
+        {/* KOTAK DESAIN SESUAI SCREENSHOT ANDA */}
+        <div className="p-6 bg-[#0B1121] border border-slate-800 rounded-3xl max-w-lg">
+          
+          {/* Harga */}
+          <h2 className="text-[2.5rem] font-extrabold text-[#818CF8] mb-4 tracking-tight leading-none">
+            {currentVariant ? formattedPrice : 'Pilih Varian'}
+          </h2>
+
+          {/* Badge Ketersediaan & Garansi */}
+          <div className="flex items-center gap-4 mb-6">
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-900/60 bg-emerald-900/20 text-emerald-400 text-sm font-medium">
+              <CheckCircleIcon className="w-4 h-4" />
+              {currentVariant && currentVariant.stock > 0 ? `Tersedia ${currentVariant.stock} Unit` : 'Stok Habis'}
+            </div>
+            <div className="flex items-center gap-1.5 text-slate-400 text-sm font-medium">
+              <ShieldCheckIcon className="w-4 h-4" />
+              Garansi Resmi 1 Tahun
+            </div>
           </div>
-          <div className="flex items-center border border-gray-300 dark:border-gray-600 rounded-xl mt-4 sm:mt-0 shadow-sm">
-            <button 
-              onClick={() => setQuantity(q => Math.max(1, q - 1))} 
-              className="px-5 py-3 text-xl font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-l-xl"
+
+          {/* KONTROL KUANTITAS (+/-) BARU */}
+          <div className="flex items-center justify-between bg-[#1E293B]/40 border border-slate-700/50 rounded-2xl p-1.5 mb-5">
+            <button
+              onClick={() => setQuantity(q => Math.max(1, q - 1))}
+              className="p-3 text-slate-400 hover:text-white hover:bg-slate-700 rounded-xl transition-colors active:scale-95"
             >
-              -
+              <MinusIcon className="w-5 h-5 stroke-2" />
             </button>
-            <span className="px-6 text-lg font-semibold text-center w-16 text-gray-900 dark:text-white">{quantity}</span>
-            <button 
-              onClick={() => setQuantity(q => currentVariant && q < currentVariant.stock ? q + 1 : q)} 
+            
+            <span className="text-xl font-bold text-white w-12 text-center font-mono">
+              {quantity}
+            </span>
+            
+            <button
+              onClick={() => setQuantity(q => currentVariant && q < currentVariant.stock ? q + 1 : q)}
               disabled={!currentVariant || quantity >= currentVariant.stock}
-              className="px-5 py-3 text-xl font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-r-xl disabled:opacity-50"
+              className="p-3 text-slate-400 hover:text-white hover:bg-slate-700 rounded-xl transition-colors active:scale-95 disabled:opacity-30 disabled:hover:bg-transparent"
             >
-              +
+              <PlusIcon className="w-5 h-5 stroke-2" />
             </button>
           </div>
+
+          {/* Tombol Masukkan Keranjang */}
+          <button
+            onClick={handleAddToCart}
+            disabled={!currentVariant || currentVariant.stock === 0}
+            className="w-full py-4 rounded-2xl font-bold text-lg text-white bg-[#6366F1] hover:bg-[#4F46E5] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ShoppingCartIcon className="w-6 h-6 stroke-2" />
+            Masukkan Keranjang
+          </button>
         </div>
-        <button
-          onClick={handleAddToCart}
-          disabled={!currentVariant || currentVariant.stock === 0}
-          className="w-full py-4 px-6 rounded-xl font-bold text-lg text-white bg-blue-600 hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          {!currentVariant ? 'Varian Tidak Tersedia' : currentVariant.stock > 0 ? '+ Tambah ke Keranjang' : 'Stok Habis'}
-        </button>
+
       </div>
     </div>
   );

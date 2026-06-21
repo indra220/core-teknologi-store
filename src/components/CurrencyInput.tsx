@@ -4,15 +4,12 @@
 import { NumericFormat, NumericFormatProps } from 'react-number-format';
 import React from 'react';
 
-// Gabungkan props bawaan dengan props custom kita
 interface CurrencyInputProps extends NumericFormatProps {
   id: string;
   name: string;
 }
 
-export default function CurrencyInput(props: CurrencyInputProps) {
-  const { id, name, className, ...rest } = props;
-
+export default function CurrencyInput({ id, name, className, ...rest }: CurrencyInputProps) {
   return (
     <NumericFormat
       id={id}
@@ -24,7 +21,7 @@ export default function CurrencyInput(props: CurrencyInputProps) {
       allowNegative={false}
       decimalScale={0}
       placeholder="Rp 0"
-      {...rest} // <-- Kunci perbaikan: teruskan semua props lainnya, termasuk onChange
+      {...rest}
     />
   );
 }

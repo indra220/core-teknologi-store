@@ -8,14 +8,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { useSession } from '@/context/SessionContext';
 import NProgress from 'nprogress'; 
-import { useRouter } from 'next/navigation'; // <-- 1. Impor useRouter
+import { useRouter } from 'next/navigation'; 
 
 export default function CancelOrderButton({ orderId }: { orderId: string }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const { showNotification } = useNotification();
   const { refreshSession } = useSession();
-  const router = useRouter(); // <-- 2. Inisialisasi router
+  const router = useRouter(); 
 
   const handleConfirmCancel = async () => {
     setIsCancelling(true);
@@ -24,13 +24,9 @@ export default function CancelOrderButton({ orderId }: { orderId: string }) {
     const result = await cancelOrder(orderId);
     
     if (result.success) {
-      if (refreshSession) {
-          await refreshSession(); // Memperbarui data saldo di navbar/session
-      }
+      if (refreshSession) await refreshSession(); 
       showNotification(result.message, 'success');
-      
-      router.refresh(); // <-- 3. PERBAIKAN: Memaksa halaman me-refresh data pesanan dari server
-      
+      router.refresh(); 
     } else {
       showNotification(result.message, 'error');
     }
@@ -44,7 +40,7 @@ export default function CancelOrderButton({ orderId }: { orderId: string }) {
     <>
       <button
         onClick={() => setIsModalOpen(true)}
-        className="mt-4 sm:mt-0 w-full sm:w-auto px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 disabled:bg-red-400 transition"
+        className="w-full sm:w-auto px-5 py-2.5 bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400 font-bold text-sm rounded-xl border border-rose-200 dark:border-rose-500/30 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all active:scale-95 shadow-sm"
       >
         Batalkan Pesanan
       </button>
@@ -55,45 +51,45 @@ export default function CancelOrderButton({ orderId }: { orderId: string }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
             onClick={() => setIsModalOpen(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
               transition={{ duration: 0.2 }}
-              className="relative bg-white dark:bg-gray-800 w-full max-w-md p-6 rounded-2xl shadow-xl border dark:border-gray-700"
+              className="relative bg-white dark:bg-[#111827] w-full max-w-md p-6 sm:p-8 rounded-2xl shadow-2xl border border-slate-200/60 dark:border-slate-700"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex flex-col items-center text-center">
-                <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/50 sm:mx-0 sm:h-10 sm:w-10">
-                    <ExclamationTriangleIcon className="h-6 w-6 text-red-600 dark:text-red-400" aria-hidden="true" />
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 mb-4">
+                    <ExclamationTriangleIcon className="h-7 w-7 text-rose-600 dark:text-rose-400" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-50 mt-4">
+                <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">
                   Konfirmasi Pembatalan
                 </h3>
-                <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                  Apakah Anda yakin ingin membatalkan pesanan ini? Saldo Anda akan dikembalikan dan tindakan ini tidak dapat diurungkan.
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Apakah Anda yakin ingin membatalkan pesanan ini? Saldo Anda akan dikembalikan secara otomatis ke Core Wallet.
                 </p>
               </div>
 
-              <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-center sm:gap-4">
+              <div className="mt-8 flex flex-col-reverse sm:flex-row gap-3">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
                   disabled={isCancelling}
-                  className="mt-3 sm:mt-0 w-full rounded-md bg-white dark:bg-gray-700 px-4 py-2 font-semibold text-gray-900 dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50"
+                  className="w-full rounded-xl bg-slate-100 dark:bg-slate-800 px-4 py-3 font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
                 >
-                  Tidak
+                  Tidak, Kembali
                 </button>
                 <button
                   type="button"
                   onClick={handleConfirmCancel}
                   disabled={isCancelling}
-                  className="w-full rounded-md bg-red-600 px-4 py-2 font-semibold text-white shadow-sm hover:bg-red-700 disabled:bg-red-400"
+                  className="w-full rounded-xl bg-rose-600 px-4 py-3 font-bold text-white shadow-md hover:bg-rose-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center"
                 >
-                  {isCancelling ? 'Memproses...' : 'Ya, Batalkan Pesanan'}
+                  {isCancelling ? <span className="animate-pulse">Memproses...</span> : 'Ya, Batalkan'}
                 </button>
               </div>
             </motion.div>

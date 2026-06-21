@@ -1,32 +1,61 @@
-@import "tailwindcss";
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* src/app/globals.css */
 
+/* Tailwind CSS v4 Engine Import (Menggantikan @tailwind directives) */
+@import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #F8FAFC; /* slate-50 untuk kesan bersih tapi tidak menyilaukan */
+  --foreground: #0F172A; /* slate-900 untuk teks */
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Menjadikan Plus Jakarta Sans sebagai font default untuk kesan premium */
+  --font-sans: var(--font-jakarta-sans), var(--font-inter), sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #020617; /* slate-950 (Sangat gelap, elegan) */
+    --foreground: #F8FAFC; 
   }
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Antialiasing membuat font terlihat lebih tajam dan tipis (standar Mac/Enterprise) */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Selection Color */
+::selection {
+  background-color: rgba(99, 102, 241, 0.2); /* Indigo transparan */
+  color: inherit;
+}
+
+/* Custom Scrollbar Elegan ala macOS */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 10px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background-color: #334155;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: #475569;
 }
 
 @keyframes fade-in-down {

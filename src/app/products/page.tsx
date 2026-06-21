@@ -7,7 +7,6 @@ import { unstable_cache } from "next/cache";
 
 const getFilterCounts = (products: Product[]) => {
   const brandCounts = products.reduce((acc, product) => {
-    // Perbaikan: Ambil brand dari relasi laptops
     const laptopData = Array.isArray(product.laptops) ? product.laptops[0] : product.laptops;
     const brand = laptopData?.brand;
     
@@ -28,9 +27,7 @@ const getCachedProducts = unstable_cache(
   async (supabase) => {
     const { data, error } = await supabase
       .from('products')
-      // Perbaikan: JOIN ke kedua tabel anak (laptops dan product_variants)
       .select(`*, laptops(*), product_variants(*)`)
-      // Perbaikan: Urutkan berdasarkan created_at karena 'name' sekarang ada di tabel laptops
       .order('created_at', { ascending: false });
     
     return { products: data as Product[] | null, error };
@@ -47,19 +44,25 @@ export default async function ProductsPage() {
   const { products, error: productsError } = await getCachedProducts(supabase);
     
   if (productsError) {
-    return <p className="text-center text-red-500 py-10">Gagal memuat data produk.</p>;
+    return (
+      <div className="flex justify-center py-20">
+        <div className="bg-rose-50 text-rose-600 px-6 py-4 rounded-xl border border-rose-200 text-sm font-semibold shadow-sm">
+          Gagal memuat data produk.
+        </div>
+      </div>
+    );
   }
 
   const { brands } = getFilterCounts(products || []);
 
   return (
-    <section className="py-8">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-gray-50 tracking-tight">
-          Semua Produk
+    <section className="py-4 sm:py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="text-center mb-12 sm:mb-16">
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+          Katalog Produk
         </h1>
-        <p className="mt-6 max-w-2xl mx-auto text-lg text-gray-600 dark:text-gray-300">
-          Jelajahi semua koleksi laptop terbaik yang kami tawarkan.
+        <p className="mt-4 sm:mt-6 max-w-2xl mx-auto text-lg text-slate-600 dark:text-slate-400">
+          Jelajahi koleksi perangkat komputasi premium kami. Temukan spesifikasi terbaik yang dirancang khusus untuk memenuhi kebutuhan profesional Anda.
         </p>
       </div>
 

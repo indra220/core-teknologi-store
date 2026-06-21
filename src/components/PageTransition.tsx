@@ -5,26 +5,24 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import { ReactNode } from 'react';
 
-// Definisikan berbagai macam varian animasi
 const animationVariants = {
   fadeInUp: {
-    initial: { opacity: 0, y: 30 },
+    initial: { opacity: 0, y: 15 },
     animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -30 },
+    exit: { opacity: 0, y: -15 },
   },
   slideIn: {
-    initial: { opacity: 0, x: 100 },
+    initial: { opacity: 0, x: 20 },
     animate: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: -100 },
+    exit: { opacity: 0, x: -20 },
   },
   scaleDown: {
-    initial: { opacity: 0, scale: 1.05 },
+    initial: { opacity: 0, scale: 1.02 },
     animate: { opacity: 1, scale: 1 },
-    exit: { opacity: 0, scale: 0.95 },
+    exit: { opacity: 0, scale: 0.98 },
   },
 };
 
-// Tipe untuk varian yang tersedia
 export type AnimationVariant = keyof typeof animationVariants;
 
 interface PageTransitionProps {
@@ -36,7 +34,6 @@ const PageTransition = ({ children, variant = 'fadeInUp' }: PageTransitionProps)
   const pathname = usePathname();
 
   return (
-    // PERBAIKAN: Ganti mode="wait" menjadi mode="popLayout" untuk transisi yang lebih baik
     <AnimatePresence mode="popLayout">
       <motion.div
         key={pathname}
@@ -44,7 +41,7 @@ const PageTransition = ({ children, variant = 'fadeInUp' }: PageTransitionProps)
         initial="initial"
         animate="animate"
         exit="exit"
-        transition={{ duration: 0.4, ease: 'easeInOut' }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
       >
         {children}
       </motion.div>

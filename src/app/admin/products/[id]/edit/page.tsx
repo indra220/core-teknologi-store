@@ -5,7 +5,12 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { notFound, useParams } from "next/navigation";
 import EditProductForm from "./EditProductForm";
-import type { Product } from "@/types";
+import type { Product as BaseProduct } from "@/types";
+
+// PERBAIKAN: Menambahkan ekstensi tipe agar selaras dengan yang dibutuhkan EditProductForm
+type ExtendedProduct = BaseProduct & {
+  price: number;
+};
 
 function EditProductSkeleton() {
     return (
@@ -23,7 +28,8 @@ export default function EditProductPage() {
     const params = useParams<{ id: string }>();
     const productId = params.id;
 
-    const [product, setProduct] = useState<Product | null>(null);
+    // PERBAIKAN: Menggunakan ExtendedProduct untuk State
+    const [product, setProduct] = useState<ExtendedProduct | null>(null);
     const [loading, setLoading] = useState(true);
     const [isError, setIsError] = useState(false);
 
@@ -46,7 +52,8 @@ export default function EditProductPage() {
             if (error || !data) {
                 setIsError(true);
             } else {
-                setProduct(data as unknown as Product);
+                // PERBAIKAN: Casting data dari database sebagai ExtendedProduct
+                setProduct(data as unknown as ExtendedProduct);
             }
             setLoading(false);
         };

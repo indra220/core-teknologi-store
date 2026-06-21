@@ -4,9 +4,10 @@
 import { useState, useRef, useEffect, RefObject } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-// PERBAIKAN IMPOR: Pastikan clearReadNotifications dan deleteNotification dipanggil
 import { markNotificationAsRead, deleteNotification, clearReadNotifications } from '@/lib/actions/notifications';
 import { useNotification } from './NotificationProvider'; 
+// PERBAIKAN: Import supabase client untuk realtime
+import { createClient } from '@/lib/supabase/client'; 
 
 interface Notification {
   id: string;
@@ -15,12 +16,10 @@ interface Notification {
   read_at?: string | null; 
   is_read?: boolean;       
   created_at: string;
+  user_id?: string; // Diperlukan untuk mencocokkan realtime payload
 }
 
-function useOnClickOutside(
-  ref: RefObject<HTMLElement | null>,
-  handler: (event: MouseEvent | TouchEvent) => void
-) {
+function useOnClickOutside(ref: RefObject<HTMLElement | null>, handler: (event: MouseEvent | TouchEvent) => void) {
   useEffect(() => {
     const listener = (event: MouseEvent | TouchEvent) => {
       if (!ref.current || ref.current.contains(event.target as Node)) return;
@@ -40,16 +39,11 @@ const XMarkIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-4
 
 const timeAgo = (date: string) => {
   const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
-  let interval = seconds / 31536000;
-  if (interval > 1) return Math.floor(interval) + " tahun lalu";
-  interval = seconds / 2592000;
-  if (interval > 1) return Math.floor(interval) + " bulan lalu";
-  interval = seconds / 86400;
-  if (interval > 1) return Math.floor(interval) + " hari lalu";
-  interval = seconds / 3600;
-  if (interval > 1) return Math.floor(interval) + " jam lalu";
-  interval = seconds / 60;
-  if (interval > 1) return Math.floor(interval) + " menit lalu";
+  let interval = seconds / 31536000; if (interval > 1) return Math.floor(interval) + " tahun lalu";
+  interval = seconds / 2592000; if (interval > 1) return Math.floor(interval) + " bulan lalu";
+  interval = seconds / 86400; if (interval > 1) return Math.floor(interval) + " hari lalu";
+  interval = seconds / 3600; if (interval > 1) return Math.floor(interval) + " jam lalu";
+  interval = seconds / 60; if (interval > 1) return Math.floor(interval) + " menit lalu";
   return "Baru saja";
 };
 
@@ -61,6 +55,7 @@ export default function NotificationUI({ initialNotifications }: { initialNotifi
   const router = useRouter();
   const notificationRef = useRef<HTMLDivElement>(null);
   const { showNotification } = useNotification();
+  const supabase = createClient();
 
   useOnClickOutside(notificationRef, () => setIsOpen(false));
 
@@ -72,36 +67,82 @@ export default function NotificationUI({ initialNotifications }: { initialNotifi
     setNotifications(mappedNotifications);
   }, [initialNotifications]);
 
+  // =======================================================================
+  // PERBAIKAN: Berlangganan (Subscribe) ke Perubahan Realtime di Database
+  // =======================================================================
+  useEffect(() => {
+    let currentUserId: string | null = null;
+
+    const setupRealtime = async () => {
+        // Ambil ID user saat ini untuk memastikan kita hanya menerima notif miliknya
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        currentUserId = user.id;
+
+        const channel = supabase
+            .channel('realtime-notifications')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'notifications',
+                    filter: `user_id=eq.${currentUserId}`
+                },
+                (payload) => {
+                    const newNotification = payload.new as Notification;
+                    
+                    // Format notifikasi baru agar sesuai struktur state
+                    const formattedNotification: Notification = {
+                        ...newNotification,
+                        is_read: newNotification.read_at !== null
+                    };
+
+                    // Tambahkan notifikasi baru ke urutan teratas tanpa menimpa yang lama
+                    setNotifications(prev => [formattedNotification, ...prev]);
+                    
+                    // Beri tahu pengguna secara visual
+                    showNotification("Anda mendapat notifikasi baru!", "info");
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    };
+
+    setupRealtime();
+    
+    // Cleanup otomatis dilakukan di dalam return setupRealtime, tapi 
+    // jika komponen di-unmount duluan, pastikan kita membersihkan channel-nya
+    return () => {
+        supabase.removeAllChannels();
+    }
+  }, [supabase, showNotification]);
+
   const handleNotificationClick = async (notification: Notification) => {
     setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, is_read: true } : n));
     setIsOpen(false);
-    
     await markNotificationAsRead(notification.id);
-    
-    if (notification.link) {
-      router.push(notification.link);
-    }
+    if (notification.link) router.push(notification.link);
   };
 
-  // HANDLER: Hapus 1 Notifikasi
   const handleDeleteSingleNotification = async (e: React.MouseEvent, id: string) => {
       e.stopPropagation(); 
       setNotifications(prev => prev.filter(n => n.id !== id));
       await deleteNotification(id);
   };
 
-  // HANDLER: Hapus Semua Terbaca
   const handleClearReadNotifications = async () => {
     setIsClearing(true);
     const result = await clearReadNotifications();
-    
     if (result.success) {
       setNotifications(prev => prev.filter(n => !n.is_read));
       showNotification(result.message || "Berhasil dihapus", 'success');
     } else {
       showNotification(result.error || "Gagal menghapus", 'error');
     }
-    
     setIsClearing(false);
   };
 
@@ -112,14 +153,19 @@ export default function NotificationUI({ initialNotifications }: { initialNotifi
     <div className="relative">
       <button 
         onClick={() => setIsOpen(prev => !prev)} 
-        className="relative p-2 hover:bg-black/5 rounded-full dark:hover:bg-white/10 transition" 
+        className="relative p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors" 
         aria-label="Buka notifikasi"
       >
         <BellIcon />
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 inline-flex items-center justify-center h-5 w-5 text-xs font-bold text-white bg-red-600 rounded-full">
+          <motion.span 
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            key={unreadCount} // Animasi pop memantul setiap kali angka berubah
+            className="absolute top-1 right-1 inline-flex items-center justify-center h-4 w-4 text-[10px] font-bold text-white bg-rose-500 rounded-full border-2 border-white dark:border-[#020617]"
+          >
             {unreadCount}
-          </span>
+          </motion.span>
         )}
       </button>
       
@@ -127,68 +173,66 @@ export default function NotificationUI({ initialNotifications }: { initialNotifi
         {isOpen && (
           <motion.div
             ref={notificationRef}
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-gray-800 rounded-lg shadow-2xl z-50 border dark:border-gray-700 flex flex-col overflow-hidden"
+            className="absolute right-0 mt-3 w-80 sm:w-96 bg-white dark:bg-[#111827] rounded-2xl shadow-xl z-50 border border-slate-200/60 dark:border-slate-800 flex flex-col overflow-hidden"
           >
-            {/* HEADER */}
-            <div className="p-4 font-extrabold text-lg border-b dark:border-gray-700 text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-800">
+            <div className="p-4 font-extrabold text-sm border-b border-slate-100 dark:border-slate-800 text-slate-900 dark:text-white uppercase tracking-wider bg-slate-50/50 dark:bg-slate-800/20">
               Notifikasi
             </div>
 
-            {/* LIST NOTIFIKASI */}
-            <div className="max-h-[22rem] overflow-y-auto bg-white dark:bg-gray-800">
+            <div className="max-h-[22rem] overflow-y-auto">
               {notifications.length > 0 ? (
-                notifications.map(notif => (
-                  <div key={notif.id} className="group flex border-b border-gray-100 dark:border-gray-700/50 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-                      
-                      <button 
-                        onClick={() => handleNotificationClick(notif)} 
-                        className="flex-grow text-left p-4 pr-2 focus:outline-none"
-                      >
-                        <p className={`text-sm leading-snug ${!notif.is_read ? 'font-bold text-gray-800 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300'}`}>
-                          {notif.message}
-                        </p>
-                        <p className={`text-xs mt-1.5 ${!notif.is_read ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-gray-400 dark:text-gray-500'}`}>
-                          {timeAgo(notif.created_at)}
-                        </p>
-                      </button>
-
-                      {/* TOMBOL SILANG (X) */}
-                      <div className="flex items-center justify-center pr-3 opacity-0 group-hover:opacity-100 transition focus-within:opacity-100">
-                        <button 
-                            onClick={(e) => handleDeleteSingleNotification(e, notif.id)}
-                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full transition focus:outline-none focus:ring-2 focus:ring-red-500"
-                            title="Hapus notifikasi"
-                        >
-                            <XMarkIcon />
+                <AnimatePresence>
+                  {notifications.map(notif => (
+                    <motion.div 
+                        key={notif.id}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="group flex border-b border-slate-50 dark:border-slate-800/50 last:border-0 hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors"
+                    >
+                        <button onClick={() => handleNotificationClick(notif)} className="flex-grow text-left p-4 pr-2 focus:outline-none">
+                          <p className={`text-sm leading-snug ${!notif.is_read ? 'font-bold text-slate-900 dark:text-white' : 'font-medium text-slate-600 dark:text-slate-400'}`}>
+                            {notif.message}
+                          </p>
+                          <p className={`text-[11px] mt-1.5 font-semibold ${!notif.is_read ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                            {timeAgo(notif.created_at)}
+                          </p>
                         </button>
-                      </div>
 
-                  </div>
-                ))
+                        <div className="flex items-center justify-center pr-3 opacity-0 group-hover:opacity-100 transition focus-within:opacity-100">
+                          <button 
+                              onClick={(e) => handleDeleteSingleNotification(e, notif.id)}
+                              className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-full transition focus:outline-none"
+                              title="Hapus notifikasi"
+                          >
+                              <XMarkIcon />
+                          </button>
+                        </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               ) : (
                 <div className="text-center py-10 px-4">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Tidak ada notifikasi baru.</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Tidak ada notifikasi baru.</p>
                 </div>
               )}
             </div>
 
-            {/* FOOTER: Tombol Hapus Semua */}
             {hasReadNotifications && (
-              <div className="p-3 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+              <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/10">
                 <button 
                   onClick={handleClearReadNotifications}
                   disabled={isClearing}
-                  className="w-full text-center text-sm text-red-500 hover:text-red-700 dark:hover:text-red-400 font-semibold disabled:opacity-50 transition py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30"
+                  className="w-full text-center text-sm text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 font-bold disabled:opacity-50 transition-colors py-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-500/10 active:scale-95"
                 >
                   {isClearing ? 'Menghapus...' : 'Hapus Semua yang Terbaca'}
                 </button>
               </div>
             )}
-
           </motion.div>
         )}
       </AnimatePresence>

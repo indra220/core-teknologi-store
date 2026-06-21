@@ -22,7 +22,7 @@ export default function StatusNotifier() {
     } else if (message === 'update_success') {
       showNotification('Profil berhasil diperbarui!', 'success');
       router.replace(window.location.pathname, { scroll: false });
-    } else if (message === 'reset_success') { // <-- TAMBAHKAN BLOK INI
+    } else if (message === 'reset_success') { 
       showNotification('Password berhasil direset! Silakan login kembali.', 'success');
       router.replace(window.location.pathname, { scroll: false });
     }

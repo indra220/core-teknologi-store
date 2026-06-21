@@ -1,32 +1,28 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+// src/app/auth/signout/route.ts
+import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
-// Tambahkan 'async' di sini
 export async function POST(request: Request) {
   const requestUrl = new URL(request.url);
-  // Tambahkan 'await' di sini
-  const cookieStore = await cookies(); 
+  const supabase = await createClient();
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) { return cookieStore.get(name)?.value; },
-        set(name: string, value: string, options: CookieOptions) { 
-          try { cookieStore.set({ name, value, ...options }); } catch {}
-        },
-        remove(name: string, options: CookieOptions) {
-          try { cookieStore.set({ name, value: '', ...options }); } catch {}
-        },
-      },
+  // Pastikan sesi benar-benar ada sebelum mencoba melakukan signout ke server
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (session) {
+    const { error } = await supabase.auth.signOut();
+    
+    if (error) {
+      console.error('SignOut Error:', error.message);
+      // Tetap paksa redirect ke login meskipun terjadi error di Supabase
+      return NextResponse.redirect(`${requestUrl.origin}/login?error=logout_failed`, {
+        status: 302,
+      });
     }
-  );
+  }
 
-  await supabase.auth.signOut();
-
-  return NextResponse.redirect(`${requestUrl.origin}/login`, {
+  // Logout berhasil, kembalikan ke halaman login dengan pesan sukses
+  return NextResponse.redirect(`${requestUrl.origin}/login?message=logout_success&action=clearsession`, {
     status: 302,
   });
 }

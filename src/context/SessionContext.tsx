@@ -1,11 +1,12 @@
 // src/context/SessionContext.tsx
 'use client';
 
-import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 import type { Profile, EmailStatus } from '@/types';
 import { useRouter } from 'next/navigation';
+import { useNotification } from '@/components/notifications/NotificationProvider';
 
 interface AppNotification {
   id: string;
@@ -36,8 +37,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<(Profile & { email_status: EmailStatus }) | null>(null);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // PERBAIKAN: Pelacak ID Notifikasi agar tidak muncul ganda
+  const notifiedIds = useRef<Set<string>>(new Set());
+  
   const supabase = createClient();
   const router = useRouter();
+  const { showNotification } = useNotification(); 
 
   const fetchSessionData = useCallback(async (sessionUser: User | null) => {
     if (sessionUser) {
@@ -46,10 +52,27 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         supabase.from('profiles').select('*').eq('id', sessionUser.id).single(),
         supabase.from('notifications').select('*').eq('user_id', sessionUser.id).order('created_at', { ascending: false })
       ]);
+      
       const userProfile = profileRes.data as (Profile & { email_status: EmailStatus }) | null;
       setProfile(userProfile);
-      setNotifications(notificationsRes.data as AppNotification[] || []);
       if (userProfile?.role) localStorage.setItem('userRole', userProfile.role);
+
+      const fetchedNotifs = notificationsRes.data as AppNotification[] || [];
+      setNotifications(fetchedNotifs);
+
+      // PERBAIKAN: Sistem Catch-up (Menangkap notif yg terlewat saat redirect)
+      const now = Date.now();
+      fetchedNotifs.forEach(n => {
+          if (!n.read_at && !notifiedIds.current.has(n.id)) {
+              const notifTime = new Date(n.created_at).getTime();
+              // Jika notifikasi dibuat kurang dari 3 detik yang lalu (akibat terlewat saat loading halaman checkout -> order)
+              if (now - notifTime < 3000) { 
+                  showNotification('Anda mendapat pemberitahuan baru', 'info');
+              }
+              notifiedIds.current.add(n.id);
+          }
+      });
+      
     } else {
       setUser(null);
       setProfile(null);
@@ -58,9 +81,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('userRole');
     }
     setLoading(false);
-  }, [supabase]);
+  }, [supabase, showNotification]);
 
-  // --- PERBAIKAN UTAMA PADA LOGIKA SESI EXPIRE ---
+  // Efek Keamanan Sesi (Timeout)
   useEffect(() => {
     const checkSessionTimeout = async () => {
       const sessionStart = localStorage.getItem('sessionStartTime');
@@ -69,16 +92,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (sessionStart && userRole) {
         const now = Date.now();
         const startTime = parseInt(sessionStart, 10);
-        
-        // Tentukan durasi absolut sesi
-        const timeoutDuration = userRole === 'admin' 
-          ? 24 * 60 * 60 * 1000  // 24 jam untuk admin
-          : 2 * 60 * 60 * 1000;   // 2 jam untuk user
+        const timeoutDuration = userRole === 'admin' ? 24 * 60 * 60 * 1000 : 2 * 60 * 60 * 1000;
 
         if (now - startTime > timeoutDuration) {
-          alert('Sesi Anda telah berakhir. Silakan login kembali.');
+          showNotification('Sesi Anda telah berakhir demi keamanan. Silakan masuk kembali.', 'info');
           await supabase.auth.signOut();
-          // Hapus item localStorage setelah signOut
           localStorage.removeItem('sessionStartTime');
           localStorage.removeItem('userRole');
           router.push('/login');
@@ -86,42 +104,48 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    // 1. Jalankan pengecekan *seketika* saat komponen dimuat
     checkSessionTimeout();
-
-    // 2. Atur interval untuk pengecekan berkala (setiap menit)
     const intervalId = setInterval(checkSessionTimeout, 60 * 1000);
-
-    // 3. Logika untuk reset timer pada aktivitas pengguna (sliding session) DIHAPUS
-    
-    // Bersihkan interval saat komponen dilepas
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [supabase, router]);
+    return () => clearInterval(intervalId);
+  }, [supabase, router, showNotification]);
   
+  // Efek Otentikasi Latar Belakang
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => fetchSessionData(session?.user ?? null));
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Logika ini untuk mencegah masalah reset password, sudah benar
-      const authFlowStatusRaw = localStorage.getItem('auth_flow_status');
-      if (authFlowStatusRaw) {
-        try {
-          const authFlowStatus = JSON.parse(authFlowStatusRaw);
-          const isRecent = (Date.now() - authFlowStatus.timestamp) < 10 * 60 * 1000;
-          if (authFlowStatus.state === 'recovery_started' && isRecent && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-            return;
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      }
       fetchSessionData(session?.user ?? null);
     });
 
     return () => subscription.unsubscribe();
   }, [fetchSessionData, supabase]);
+
+  // EFEK REALTIME SUPABASE UNTUK NOTIFIKASI INSTAN
+  useEffect(() => {
+    if (!user) return;
+
+    const notificationChannel = supabase
+      .channel(`realtime-notifications-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const newNotification = payload.new as AppNotification;
+          
+          // Pastikan notifikasi ini belum pernah di-pop-up
+          if (!notifiedIds.current.has(newNotification.id)) {
+              setNotifications((prev) => [newNotification, ...prev]);
+              showNotification('Anda mendapat pemberitahuan baru', 'info');
+              notifiedIds.current.add(newNotification.id);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(notificationChannel);
+    };
+  }, [user, supabase, showNotification]);
   
   const refreshSession = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();

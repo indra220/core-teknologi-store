@@ -11,7 +11,7 @@ import { Suspense, ReactNode } from "react";
 import { PayPalProvider } from "@/context/PayPalProvider";
 import StatusNotifier from "@/components/notifications/StatusNotifier";
 import { SessionProvider } from "@/context/SessionContext";
-import TopLoader from "@/components/TopLoader"; // <-- Cukup impor TopLoader
+import TopLoader from "@/components/TopLoader";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -32,10 +32,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode; }) {
   return (
-    <html lang="en" className={`${inter.variable} ${jakarta.variable}`}>
-      <body className={`font-sans`}>
+    <html lang="id" className={`${inter.variable} ${jakarta.variable}`}>
+      <body className="font-sans antialiased min-h-screen flex flex-col bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-white transition-colors duration-300">
         <Suspense fallback={null}>
-            {/* Suspense dibutuhkan karena TopLoader menggunakan hooks seperti usePathname */}
             <TopLoader />
         </Suspense>
         
@@ -47,7 +46,8 @@ export default function RootLayout({ children }: { children: ReactNode; }) {
             <SessionProvider>
               <CartProvider>
                 <Header />
-                <main className="container mx-auto p-4 sm:p-6 lg:px-8">
+                {/* PERBAIKAN: Mengganti 'container' dengan 'w-full' agar layout merentang penuh ke layar */}
+                <main className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 flex flex-col flex-1">
                   {children}
                 </main>
               </CartProvider>

@@ -7,6 +7,7 @@ import { useFormStatus } from "react-dom";
 import { updateOrderStatus } from "../actions";
 import { useNotification } from "@/components/notifications/NotificationProvider";
 import NProgress from 'nprogress';
+import { TagIcon, CheckCircleIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 
 function SubmitButton({ disabled }: { disabled: boolean }) {
     const { pending } = useFormStatus();
@@ -14,14 +15,26 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
         <button 
             type="submit" 
             disabled={disabled || pending}
-            className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full sm:w-auto flex items-center justify-center rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
         >
-            {pending ? 'Menyimpan...' : 'Simpan Perubahan'}
+            {pending ? (
+                <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Menyimpan
+                </>
+            ) : (
+                <>
+                    <CheckCircleIcon className="h-4 w-4 mr-2" />
+                    Simpan
+                </>
+            )}
         </button>
     );
 }
 
-// 1. PERBAIKAN: Menambahkan props onSuccess
 export default function UpdateStatusForm({ order, onSuccess }: { order: Order, onSuccess?: () => void }) {
     const initialState = { success: false, message: "" };
     const [state, formAction] = useActionState(updateOrderStatus, initialState);
@@ -32,7 +45,6 @@ export default function UpdateStatusForm({ order, onSuccess }: { order: Order, o
             NProgress.done(); 
             showNotification(state.message, state.success ? 'success' : 'error');
             
-            // 2. PERBAIKAN: Panggil onSuccess jika update berhasil untuk me-refresh parent component
             if (state.success && onSuccess) {
                 onSuccess();
             }
@@ -52,28 +64,48 @@ export default function UpdateStatusForm({ order, onSuccess }: { order: Order, o
     const isFormDisabled = order.status === 'Selesai' || order.status === 'Dibatalkan';
 
     return (
-        <form action={formAction} className="flex items-center gap-4" onSubmit={() => NProgress.start()}>
-            <input type="hidden" name="orderId" value={order.id} />
-            <input type="hidden" name="userId" value={order.user_id} />
-            <div>
-                <label htmlFor="status" className="block text-sm font-medium leading-6 text-gray-900 dark:text-gray-200">
-                    Status Pesanan
-                </label>
-                <select
-                    id="status"
-                    name="status"
-                    defaultValue={order.status}
-                    disabled={isFormDisabled}
-                    className="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 dark:bg-gray-700 dark:text-white ring-1 ring-inset ring-gray-300 dark:ring-gray-600 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6 disabled:opacity-70"
-                >
-                    {availableOptions.map(status => (
-                        <option key={status} value={status}>{status}</option>
-                    ))}
-                </select>
+        <div className="flex flex-col h-full justify-center">
+            <div className="flex items-center gap-2 mb-4">
+                <TagIcon className="h-5 w-5 text-slate-400" />
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white">Status Operasional</h2>
             </div>
-            <div className="self-end">
-                <SubmitButton disabled={isFormDisabled} />
-            </div>
-        </form>
+
+            <form action={formAction} className="flex flex-col sm:flex-row gap-3" onSubmit={() => NProgress.start()}>
+                <input type="hidden" name="orderId" value={order.id} />
+                <input type="hidden" name="userId" value={order.user_id} />
+                
+                {/* Penambahan div relative untuk menempatkan custom icon */}
+                <div className="relative flex-1">
+                    <label htmlFor="status" className="sr-only">Status Pesanan</label>
+                    <select
+                        id="status"
+                        name="status"
+                        defaultValue={order.status}
+                        disabled={isFormDisabled}
+                        // PERBAIKAN: Ditambahkan 'appearance-none' dan 'pr-12' (padding kanan) agar lebih lega
+                        className="appearance-none block w-full rounded-xl border-0 py-2.5 pl-3.5 pr-12 bg-white text-slate-900 ring-1 ring-inset ring-slate-200 focus:ring-2 focus:ring-indigo-500/50 sm:text-sm font-medium shadow-sm outline-none transition-all cursor-pointer dark:bg-slate-800 dark:text-white dark:ring-slate-700 disabled:opacity-90 disabled:bg-slate-100 disabled:text-slate-700 dark:disabled:bg-slate-800/50 dark:disabled:text-slate-300 disabled:cursor-not-allowed"
+                    >
+                        {availableOptions.map(status => (
+                            <option key={status} value={status}>{status}</option>
+                        ))}
+                    </select>
+                    
+                    {/* Custom Arrow Icon yang proporsional posisinya */}
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5">
+                        <ChevronDownIcon className="h-4 w-4 text-slate-400 dark:text-slate-500" aria-hidden="true" />
+                    </div>
+                </div>
+                
+                {!isFormDisabled && <SubmitButton disabled={isFormDisabled} />}
+            </form>
+            
+            {isFormDisabled && (
+                <div className="mt-3 bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700/50 text-center">
+                    <p className="text-[11px] font-medium text-slate-500">
+                        Pesanan ini telah dikunci dan statusnya tidak dapat diubah lagi.
+                    </p>
+                </div>
+            )}
+        </div>
     );
 }

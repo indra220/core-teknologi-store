@@ -3,10 +3,11 @@
 
 import { useState, useActionState, useEffect } from "react"; 
 import { useFormStatus } from "react-dom";
+import { useRouter } from "next/navigation";
 import { addProductWithVariants } from "./actions";
 import Link from "@/components/NavigationLoader";
 import CurrencyInput from '@/components/CurrencyInput';
-import { TrashIcon, PlusCircleIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, PlusCircleIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import NProgress from 'nprogress';
 
 interface Variant {
@@ -15,6 +16,7 @@ interface Variant {
   processor: string;
   ram: string;
   storage: string;
+  graphic: string; 
   screen_size: string;
   stock: string;
 }
@@ -31,19 +33,31 @@ function SubmitButton() {
 export default function AddProductPage() {
   const initialState = { message: null, type: null };
   const [formState, formAction] = useActionState(addProductWithVariants, initialState);
+  const router = useRouter();
   
   const [variants, setVariants] = useState<Variant[]>([
-    { id: Date.now(), price: '', processor: '', ram: '', storage: '', screen_size: '', stock: '0' }
+    { id: Date.now(), price: '', processor: '', ram: '', storage: '', graphic: '', screen_size: '', stock: '0' }
   ]);
+
+  // STATE UNTUK MODAL NOTIFIKASI
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     if (formState?.message) {
       NProgress.done();
+      setShowModal(true); // Memunculkan modal saat ada pesan dari server
     }
   }, [formState]);
 
+  const closeModal = () => {
+    setShowModal(false);
+    if (formState?.type === 'success') {
+      router.push('/admin/products');
+    }
+  };
+
   const addVariant = () => {
-    setVariants([...variants, { id: Date.now(), price: '', processor: '', ram: '', storage: '', screen_size: '', stock: '0' }]);
+    setVariants([...variants, { id: Date.now(), price: '', processor: '', ram: '', storage: '', graphic: '', screen_size: '', stock: '0' }]);
   };
 
   const removeVariant = (id: number) => {
@@ -110,7 +124,7 @@ export default function AddProductPage() {
         <div className="mt-8 bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 space-y-8">
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Varian Produk (Stok & Spesifikasi)</h2>
           {variants.map((variant, index) => (
-            <div key={variant.id} className="p-4 border border-gray-300 dark:border-gray-600 rounded-lg space-y-4 relative">
+            <div key={variant.id} className="p-4 border border-gray-300 dark:border-gray-600 rounded-lg space-y-4 relative bg-gray-50/50 dark:bg-gray-800/50">
               <h3 className="font-semibold text-gray-800 dark:text-gray-200">Varian {index + 1}</h3>
               {variants.length > 1 && (
                 <button type="button" onClick={() => removeVariant(variant.id)} className="absolute top-4 right-4 text-red-500 hover:text-red-700">
@@ -124,6 +138,15 @@ export default function AddProductPage() {
                       type="text" 
                       value={variant.processor} 
                       onChange={e => handleVariantChange(variant.id, 'processor', e.target.value)} 
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500" 
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kartu Grafis (VGA)</label>
+                    <input 
+                      type="text" 
+                      value={variant.graphic} 
+                      onChange={e => handleVariantChange(variant.id, 'graphic', e.target.value)} 
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500" 
                     />
                 </div>
@@ -154,7 +177,6 @@ export default function AddProductPage() {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500" 
                     />
                 </div>
-                {/* Posisi Stok Dipindahkan ke Sini (Setelah Ukuran Layar) */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stok</label>
                     <input 
@@ -166,7 +188,6 @@ export default function AddProductPage() {
                       required
                     />
                 </div>
-                {/* Posisi Harga Dipindahkan ke Sini (Paling Akhir) */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Harga (Rp)</label>
                     <CurrencyInput 
@@ -181,24 +202,48 @@ export default function AddProductPage() {
               </div>
             </div>
           ))}
-           <button type="button" onClick={addVariant} className="flex items-center gap-2 font-semibold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+           <button type="button" onClick={addVariant} className="flex items-center gap-2 font-semibold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 mt-2">
             <PlusCircleIcon className="w-6 h-6"/>
             Tambah Varian Lain
           </button>
         </div>
         
         <input type="hidden" name="variants" value={JSON.stringify(variants.map(({id: _, ...rest}) => rest))} />
-
-        {formState?.message && (
-          <div className={`mt-4 p-3 rounded-lg text-sm ${formState.type === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
-            {formState.message}
-          </div>
-        )}
         
         <div className="flex flex-col sm:flex-row gap-4 pt-6">
             <Link href="/admin/products" className="w-full text-center py-3 px-4 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300 font-semibold dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</Link>
             <SubmitButton />
         </div>
+
+        {/* MODAL NOTIFIKASI */}
+        {showModal && formState?.message && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+              <div className="p-6 text-center">
+                <div className={`mx-auto flex h-20 w-20 items-center justify-center rounded-full mb-5 ${formState.type === 'success' ? 'bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400'}`}>
+                  {formState.type === 'success' ? (
+                      <CheckCircleIcon className="h-12 w-12" />
+                  ) : (
+                      <XCircleIcon className="h-12 w-12" />
+                  )}
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                  {formState.type === 'success' ? 'Berhasil!' : 'Gagal'}
+                </h3>
+                <p className="text-gray-600 dark:text-gray-300 text-sm mb-8 px-2">
+                  {formState.message}
+                </p>
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all active:scale-95 shadow-lg shadow-blue-200 dark:shadow-none"
+                >
+                  {formState.type === 'success' ? 'Kembali ke Produk' : 'Tutup & Perbaiki'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </form>
     </div>
   );

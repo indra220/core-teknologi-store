@@ -24,10 +24,15 @@ export default async function MyOrdersPage() {
 
   if (error) {
     console.error("Error fetching orders:", error.message || error);
-    return <div className="text-center py-10 text-red-500">Gagal memuat riwayat pesanan.</div>;
+    return (
+      <div className="flex justify-center py-20">
+        <div className="bg-rose-50 text-rose-600 px-6 py-4 rounded-xl border border-rose-200 text-sm font-semibold shadow-sm">
+          Gagal memuat riwayat pesanan.
+        </div>
+      </div>
+    );
   }
 
-  // PERBAIKAN TYPESCRIPT: Membuat tipe dasar pengganti 'any'
   type OrderItemBase = { product_id: string; [key: string]: unknown };
 
   // 2. Kumpulkan semua product_id unik dari item pesanan
@@ -58,7 +63,6 @@ export default async function MyOrdersPage() {
     ...order,
     order_items: order.order_items.map((item: OrderItemBase) => ({
       ...item,
-      // Membuat struktur tiruan (mock) yang cocok dengan ekspektasi TypeScript di Client Page
       products: {
         laptops: [
           { image_url: laptopsMap[item.product_id] || null }
@@ -67,11 +71,13 @@ export default async function MyOrdersPage() {
     }))
   })) as unknown as Order[];
 
+  // PERBAIKAN: Menghapus max-w-6xl dan menggantinya dengan w-full agar mengisi ruang yang kini sudah lega
+  // Komentar diletakkan di luar return agar tidak memicu error TS2304
   return (
-    <div className="max-w-6xl mx-auto py-10 px-4">
-      <header className="mb-6">
-        <h1 className="text-4xl font-extrabold text-gray-900 dark:text-gray-50 tracking-tight">Pesanan Saya</h1>
-        <p className="mt-2 text-lg text-gray-600 dark:text-gray-300">Lacak dan kelola semua transaksi Anda di sini.</p>
+    <div className="w-full mx-auto py-4 sm:py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <header className="mb-8">
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">Pesanan Saya</h1>
+        <p className="mt-2 text-sm sm:text-base text-slate-500 dark:text-slate-400">Lacak pengiriman dan kelola semua riwayat transaksi Anda.</p>
       </header>
 
       <OrderClientPage allOrders={formattedOrders || []} />

@@ -53,16 +53,19 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     .limit(5)
     .returns<RecentOrder[]>();
 
+  // PERBAIKAN: Hanya menghitung akun dengan role 'user' (Pelanggan)
   const { count: newUsersCount } = await supabase
     .from('profiles')
     .select('*', { count: 'exact', head: true })
+    .eq('role', 'user') 
     .gte('created_at', thirtyDaysAgo.toISOString());
     
+  // PERBAIKAN: Hanya menghitung akun dengan role 'user' (Pelanggan)
   const { count: totalUsersCount } = await supabase
     .from('profiles')
-    .select('*', { count: 'exact', head: true });
+    .select('*', { count: 'exact', head: true })
+    .eq('role', 'user');
 
-  // MENYESUAIKAN: Mengubah nama tabel ke 'laptops'
   const { count: totalProducts } = await supabase
     .from('laptops')
     .select('*', { count: 'exact', head: true });
@@ -108,7 +111,6 @@ export async function deleteProduct(productId: string, imageUrl: string | null) 
     }
   }
   
-  // MENYESUAIKAN: Mengubah nama tabel ke 'laptops'
   const { error } = await supabase.from('laptops').delete().eq('id', productId);
 
   if (error) {

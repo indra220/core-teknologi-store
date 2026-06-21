@@ -6,18 +6,27 @@
 }
 
 #nprogress .bar {
-  background: #3b82f6; /* Warna biru (blue-500) */
+  background: #4f46e5; /* Warna Indigo-600 untuk kesan Enterprise */
   position: fixed;
   z-index: 9999;
   top: 0;
   left: 0;
   width: 100%;
-  height: 4px; /* Dibuat sedikit lebih tebal */
+  height: 3.5px; /* Ketebalan proporsional */
+  border-bottom-right-radius: 2px;
+  border-top-right-radius: 2px;
 
-  /* Efek glow/bayangan yang halus */
-  box-shadow: 0 0 15px #3b82f6, 0 0 10px #3b82f6;
+  /* Efek glow/bayangan yang halus sesuai warna Indigo */
+  box-shadow: 0 0 15px #4f46e5, 0 0 8px #4f46e5;
 }
-/* Hapus "peg" atau efek blur bawaan karena kita sudah punya glow */
+
+/* Hapus "peg" atau efek blur bawaan karena kita sudah punya glow custom di atas */
 #nprogress .peg {
   display: none;
+}
+
+/* (Opsional) Jika sewaktu-waktu Anda mengaktifkan spinner, warnanya juga selaras */
+#nprogress .spinner-icon {
+  border-top-color: #4f46e5;
+  border-left-color: #4f46e5;
 }

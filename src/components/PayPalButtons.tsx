@@ -6,8 +6,8 @@ import { PayPalButtons, PayPalButtonsComponentProps } from "@paypal/react-paypal
 import { useCart, CartItem } from "@/context/CartContext";
 import { useNotification } from "@/components/notifications/NotificationProvider";
 import { useRouter } from "next/navigation";
+import NProgress from "nprogress"; // Impor NProgress untuk interaksi UI
 
-// 1. Definisikan tipe untuk props yang dikirim dari halaman Checkout
 interface ShippingAddress {
   address_line_1: string;
   admin_area_2: string;
@@ -21,7 +21,6 @@ interface PayPalPaymentProps {
   shippingAddress?: ShippingAddress;
 }
 
-// 2. Terima props cartItems dan shippingAddress
 export default function PayPalPayment({ cartItems: propsCartItems, shippingAddress }: PayPalPaymentProps) {
   const { cartItems: contextCartItems, clearCart } = useCart();
   const { showNotification } = useNotification();
@@ -32,6 +31,7 @@ export default function PayPalPayment({ cartItems: propsCartItems, shippingAddre
 
   const createOrder: PayPalButtonsComponentProps['createOrder'] = async (_data, actions) => {
     const subtotal = currentCartItems.reduce((total, item) => total + item.price * item.quantity, 0);
+    // Konversi ke USD (Contoh rate 15.000)
     const totalInUSD = (subtotal / 15000).toFixed(2);
 
     if (parseFloat(totalInUSD) < 0.01) {
@@ -39,7 +39,6 @@ export default function PayPalPayment({ cartItems: propsCartItems, shippingAddre
       throw new Error("Amount too small");
     }
 
-    // 3. Susun data transaksi
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const purchaseUnit: any = {
       amount: {
@@ -49,7 +48,7 @@ export default function PayPalPayment({ cartItems: propsCartItems, shippingAddre
       description: "Pembelian produk dari Core Teknologi Store",
     };
 
-    // 4. MEMAKSA PAYPAL MENGGUNAKAN ALAMAT LOKAL (Bukan San Jose)
+    // MEMAKSA PAYPAL MENGGUNAKAN ALAMAT LOKAL
     if (shippingAddress) {
       purchaseUnit.shipping = {
         address: {
@@ -74,18 +73,21 @@ export default function PayPalPayment({ cartItems: propsCartItems, shippingAddre
       return;
     }
 
+    // Tampilkan loading bar di atas layar agar pengguna tahu proses sedang berjalan
+    NProgress.start();
+
     try {
       const details = await actions.order.capture();
       const payerName = details.payer?.name?.given_name || 'Pelanggan';
 
-      // 5. MENGIRIM ALAMAT LOKAL KE BACKEND / API
+      // MENGIRIM ALAMAT LOKAL KE BACKEND / API
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           cartItems: currentCartItems,
           payPalOrderDetails: details,
-          localShippingAddress: shippingAddress // <-- INI YANG PALING PENTING!
+          localShippingAddress: shippingAddress 
         }),
       });
 
@@ -101,20 +103,29 @@ export default function PayPalPayment({ cartItems: propsCartItems, shippingAddre
     } catch (err) {
       showNotification("Pembayaran atau penyimpanan pesanan gagal.", "error");
       console.error("Approve Error:", err);
+    } finally {
+      // Hentikan loading bar setelah semuanya selesai (berhasil/gagal)
+      NProgress.done();
     }
   };
   
   const onError: PayPalButtonsComponentProps['onError'] = (err) => {
-    showNotification("Terjadi kesalahan pembayaran PayPal.", "error");
+    showNotification("Terjadi kesalahan pada gateway pembayaran PayPal.", "error");
     console.error("PayPal Error:", err);
+    NProgress.done(); // Pastikan NProgress berhenti jika ada error SDK
   };
 
   return (
-    <PayPalButtons
-      style={{ layout: "vertical", color: "blue", shape: "rect", label: "pay" }}
-      createOrder={createOrder}
-      onApprove={onApprove}
-      onError={onError}
-    />
+    // Z-Index diatur agar pop-up PayPal tidak tertindih atau menindih elemen secara aneh
+    <div className="relative z-0 w-full">
+      <PayPalButtons
+        // Warna 'gold' adalah warna premium dan tertinggi konversinya untuk UI PayPal
+        style={{ layout: "vertical", color: "gold", shape: "rect", label: "pay" }}
+        createOrder={createOrder}
+        onApprove={onApprove}
+        onError={onError}
+        className="w-full"
+      />
+    </div>
   );
 }
